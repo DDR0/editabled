@@ -1,0 +1,5 @@
+Random String:
+openssl rand -base64 5
+
+ln Order of Args:
+ln -s existing_target new_name

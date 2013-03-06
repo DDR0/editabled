@@ -1,0 +1,11 @@
+canvas {
+	/*border: 3px ridge;*/
+	color: white;
+}
+
+canvas.image-editor {
+	/*margin: -3px;*/ /*Reenable this (and the border) when we've got something to test against on-canvas.*/
+	background-color: black;
+	width: 100%;
+	height: 100%;
+}
