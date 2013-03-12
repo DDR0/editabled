@@ -25,7 +25,7 @@ editors.map(function(index) {
 			return wacomPlugin ? wacomPlugin.penAPI.pressure : null;
 		};
 		return function(event) {
-			return wacomPressure() || event.pressure || event.mozPressure || 1.0;
+			return wacomPressure() || event.pressure || event.mozPressure || 0.5;
 		};
 	}();
 	
@@ -39,26 +39,28 @@ editors.map(function(index) {
 	
 	var pushMouseButtons = function(event) {
 		buttonsDown[event.button] = true;
-		c.log(utils.tagStr('added'), buttonsDown);
+		//c.log(utils.tagStr('added'), buttonsDown);
 	};
 	
 	var popMouseButtons = function(event) {
 		buttonsDown[event.button] = false;
-		c.log(utils.tagStr('removed'), buttonsDown);
+		//c.log(utils.tagStr('removed'), buttonsDown);
 	};
 	utils['popMouseButtons'] = popMouseButtons;
 	
 	var buttonDown = function(event) {return (!!event.button || mouseLeftButtonDown) && buttonsDown[event.button];};
 	
-	var sendMouseEventToUI = function(event, targetName) { //Takes a DOM mouse event and a target function in the UI. Passes a 'nice' function to the UI. Returns mouse position where event was fired at. ——— The purpose of Event Listener.js is to feed the UI code events that are maximally useful. This way, we don't get the capturing and processing of the event mixed up with the code that details the effects of the event. (~100 lines of code that *aren't* cluttering up the logic in the UI drawing code.)
+	var sendMouseEventToUI = function(event, targetName, flags) { //Takes a DOM mouse event and a target function in the UI. Passes a 'nice' function to the UI. Returns mouse position where event was fired at. ——— The purpose of Event Listener.js is to feed the UI code events that are maximally useful. This way, we don't get the capturing and processing of the event mixed up with the code that details the effects of the event. (~100 lines of code that *aren't* cluttering up the logic in the UI drawing code.)
+		flags = flags || {};
 		var mLoc = mouseLocation(event);
 		targetName = sUtils.eventName(ui.tool.type, targetName);
-		if(mLoc && ui[targetName]) {
+		//c.log(utils.tagStr('event ' + targetName));
+		if((mLoc || flags.noNew) && ui[targetName]) {
+			mLoc = mLoc || {};
 			var fnArg = {x: mLoc.x, //Setting "prototype: mLoc" doesn't work. __proto__ only works in chrome.
-					     y: mLoc.y,
+					     y: mLoc.y - utils.useMouseOffsetWorkaround,
 					     oldX: oldMousePosition.x,
-					     oldY: oldMousePosition.y,
-				         button: event.button,
+					     oldY: oldMousePosition.y - utils.useMouseOffsetWorkaround,
 				         pressure: pressure(event),
 				        };
 			if(utils.useDelayInputWorkaround) {
@@ -71,21 +73,18 @@ editors.map(function(index) {
 	};
 	
 	var startMouseEvent = function(event) {
-		c.log(buttonsDown, event.button);
 		if(buttonsDown[event.button]) {
 			var mLoc;
+			sendMouseEventToUI(event, 'removePreview', {noNew:true});
 			switch(event.button) {
 				case 0:
-					sendMouseEventToUI(event, 'leftRemovePreview');
 					mLoc = sendMouseEventToUI(event, 'leftStart');
 					if(mLoc) mouseLeftButtonDown = true;
 					break;
 				case 1:
-					sendMouseEventToUI(event, 'middleRemovePreview');
 					mLoc = sendMouseEventToUI(event, 'middleStart');
 					break;
 				case 2:
-					sendMouseEventToUI(event, 'rightRemovePreview');
 					mLoc = sendMouseEventToUI(event, 'rightStart');
 					break;
 			}
@@ -118,20 +117,8 @@ editors.map(function(index) {
 					break;
 			}
 		} else {
-			switch(event.button) {
-				case 0:
-					sendMouseEventToUI(event, 'leftRemovePreview');
-					mLoc = sendMouseEventToUI(event, 'leftAddPreview');
-					break;
-				case 1:
-					sendMouseEventToUI(event, 'middleRemovePreview');
-					mLoc = sendMouseEventToUI(event, 'middleAddPreview');
-					break;
-				case 2:
-					sendMouseEventToUI(event, 'rightRemovePreview');
-					mLoc = sendMouseEventToUI(event, 'rightAddPreview');
-					break;
-			}
+			sendMouseEventToUI(event, 'removePreview', {noNew:true});
+			mLoc = sendMouseEventToUI(event, 'addPreview');
 		}
 		if(mLoc) oldMousePosition = mLoc;
 		return stopAllPropagation(event);
@@ -143,17 +130,17 @@ editors.map(function(index) {
 				case 0:
 					mouseLeftButtonDown = false;
 					sendMouseEventToUI(event, 'leftFinish');
-					sendMouseEventToUI(event, 'leftAddPreview');
 					break;
 				case 1:
 					sendMouseEventToUI(event, 'middleFinish');
-					sendMouseEventToUI(event, 'middleAddPreview');
 					break;
 				case 2:
 					sendMouseEventToUI(event, 'rightFinish');
-					sendMouseEventToUI(event, 'rightAddPreview');
 					break;
 			}
+			sendMouseEventToUI(event, 'addPreview');
+		} else {
+			sendMouseEventToUI(event, 'removePreview', {noNew:true});
 		}
 		return stopAllPropagation(event);
 	};
@@ -166,11 +153,7 @@ editors.map(function(index) {
 	canvas.addEventListener('mouseout', finishMouseEvent);
 	
 	
-	
-		
-	/*document.addEventListener('mousedown', function(event) {
-		pushMouseButtons(event);
-	});*/
+	//This makes a mouse-up event fire even if we're not on the canvas, so that we don't release the mouse button off-canvas and then start drawing lines on canvas even though we're not pressing anything. Basically – it's a hack for not being able to ask 'is a mouse button actually down'.
 	document.addEventListener('mouseup', function(event) {
 		popMouseButtons(event);
 	});

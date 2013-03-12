@@ -149,6 +149,6 @@ editors.map(function(index) {
 	
 	
 	pingWorker();
-	drawingTests();
+	//drawingTests();
 	
 });

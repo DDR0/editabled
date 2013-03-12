@@ -1,0 +1,25 @@
+Documentation:
+This documentation covers the use and programming Editabled, the editable pixel editor.
+
+5. Event Listener:
+The event listener gets and cleans the raw input from the browser. It is for translating events from 'user did this' to 'program should do that'. For example, it takes the event "mousemove" and either tells the User Interface to draw a preview or draw the current tool's drag from here to there.
+
+5.1 Event Names:
+To construct an event function name, you have, in droopyCamelCaps, <tool name><mouse button><action>. To construct a named event, simply pick one from each of the columns below for the appropriate module. Events which have a superscripted number after them are garaunteed to be fired the same number of times in the end. (For every x¹, there is a y¹.)
+
+User Interface Events:
+tool name │ mouse button │ action
+──────────┼──────────────┼───────────────
+pencil    │ left         │ start¹
+          │ middle       │ continue
+          │ right        │ finish¹
+          │              │ cancel
+          │              │ addPreview
+          │              │ removePreview
+          │              │
+          │              │
+
+All events are a simple function taking one map containing the keys x, y, oldX, oldY, pressure, and button. oldX and oldY are the x/y coordinates the mouse was at last frame. Pressure (usually unsupported) defaults to 0.5, and ranges between 0 and 1.
+
+6. User Interface:
+The user interface runs the code that deals with displaying to the user. It sends events to the Pixel Store, and provides an event handler for Pixel Store to update the displayed buffer with. The User Interface works by drawing a preview of the action to screen, if possible, then dispatching an event to Pixel Store to do a 'proper job' of it. This is done in a web worker so as to try to not impact the framerate of the browser, since some operations (like flood-fill) may take a while to complete.

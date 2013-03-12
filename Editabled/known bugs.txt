@@ -1,0 +1,4 @@
+Ｋｎｏｗｎ Ｂｕｇｓ
+‣ In Chromium, there in a fuzzy area at the top of the canvas where the mouse is still on the canvas, but it's not actually on it.
+
+Ｆｉｘｅｄ Ｂｕｇｓ

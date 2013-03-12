@@ -12,8 +12,8 @@ window.loadEditabled = function() {
 	var baseURL = "Editabled/";
 	var jsAr = [		
 		{url: "Miscellaneous Utilities.js", type: "script"},
-		{url: "Setup.js",                   type: "script"},
 		{url: "Pixel Store.js",             type: "canvas-worker", name: "pxStore"},
+		{url: "Setup.js",                   type: "script"},
 		{url: "User Interface.js",          type: "script"},
 		{url: "Event Listener.js",          type: "script"},
 		{url: "Tests.js",                   type: "script"},
@@ -75,6 +75,8 @@ window.loadEditabled = function() {
 			var editor = editors[index];
 			editor.width = $(editor).width();
 			editor.height = $(editor).height();
+			editor.edLib = {};
+			
 			var ctx = editor.getContext('2d'); //ctx = ConTeXt.
 			ctx.strokeStyle = '#000';
 			ctx.fillStyle = '#FFF';

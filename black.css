@@ -8,4 +8,9 @@ canvas.image-editor {
 	background-color: black;
 	width: 100%;
 	height: 100%;
+	cursor: crosshair;
+	cursor: 
+		url(data:image/gif;base64,R0lGODlhDwAPAKEAAAAAAP///wAAAAAAACH5BAEKAAIALAAAAAAPAA8AAAIilI+pAqsQmjtQThYvnaCnbkFBZogk4yEgp5Un9zpVy9BTAQA7)
+			7 7,
+		crosshair;
 }
