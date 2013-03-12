@@ -30,7 +30,17 @@ editors.map(function(index) {
 	
 	
 	
+	var floodCanvas = function(layer) {
+		var ctx = writers[layer];
+		ctx.rect(0,0,10000,10000);
+		ctx.fillStyle="#333";
+		ctx.fill(); 
+	};
+	
+	
+	
 	var drawingTests = function(run) {
+		
 		run = run || ['25pt', '\\', '/', 'vLines', 'hLines', 'angles'];
 		var cmd;
 		var x = 10; var y = 10;
@@ -149,6 +159,8 @@ editors.map(function(index) {
 	
 	
 	pingWorker();
+	
+	floodCanvas('underlay');
 	//drawingTests();
 	
 });

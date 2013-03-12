@@ -69,17 +69,6 @@ var imageTree = newLayerFolder({});
 self.onmessage = function(event) {
 	var cmd = cUtils.eventNameFromCommand('on', event);
 	self[cmd]((delete event.data.data.command, event.data.data));
-	return;
-	/*var buffer = pickImage([0]).buffer;
-	var bView = new DataView(buffer);
-	bView.setInt8(2, 255);
-	bView.setInt8(3, 255);
-	buffer = buffer.slice(0);
-	var bLength = buffer.byteLength;
-	self.postMessage({'command':'noop', 'data':buffer, 'draw_rect': 'all'}, [buffer]);
-	if(bLength === buffer.byteLength) { //If the buffer was copied, byteLength won't be readable anymore.
-		c.log("The return buffer was serialized! [#7nZPb]");
-	}*/
 };
 
 
@@ -100,6 +89,7 @@ var onDrawLine = function(data) { //Draw a number of pixels to the canvas.
 	var layer = pickImage(data.layer);
 	var imageData = new Uint8ClampedArray(layer.buffer);
 	cUtils.setLine(_.extend({'data':imageData, 'width':layer.width, 'chan':layer.channels}, data.points, data.tool.colour));
+	_.range(500000);
 	sendUpdate(data.layer, boundingBox);
 };
 
@@ -109,12 +99,10 @@ var onDrawLine = function(data) { //Draw a number of pixels to the canvas.
 
 var sendUpdate = function(layer, boundingBox) {
 	layer = pickImage(layer);
-	boundingBox = cUtils.getBoundingBox({x:[0,layer.width], y:[0,layer.height]});
 	
 	//Update background.
 	var bufferToReturn = cUtils.convertBuffer(layer.buffer, {area:boundingBox, bufferWidth:layer.width, outputChannels:4, inputChannels:8});
 	var bLength = bufferToReturn.byteLength;
-	
 	self.postMessage({
 		'command': 'updatePaste',
 		'data': {

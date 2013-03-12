@@ -22,9 +22,10 @@ editors.map(function(index) {
 			});
 		}	
 		delete data.tool; delete data.layer; //Don't need these anymore.
+		data.to = data.to || 'ui';
 		
 		var boundingBox = cUtils.getBoundingBox(data.points);
-		var iData = cUtils.croppedImage(writers.ui, boundingBox);
+		var iData = cUtils.croppedImage(writers[data.to], boundingBox);
 		var command = {
 			x:data.points.x,
 			y:data.points.y, 
@@ -40,9 +41,13 @@ editors.map(function(index) {
 			command[3] = 255;
 		}
 		cUtils.setLine(
-			cUtils.normalizeCoords(command, boundingBox), true);
-		//writers[data.to || 'ui'].putImageData(iData, boundingBox.x, boundingBox.y);
-		//c.log('next');
+			cUtils.normalizeCoords(command, boundingBox)/*, true*/);
+		writers[data.to].putImageData(iData, boundingBox.x, boundingBox.y);
+	};
+	
+	ui.draw = function() {  //For the tests. They call ui.draw, and don't specify the .to property.
+		arguments[0].to = 'underlay';
+		drawLine.apply(this, arguments);
 	};
 	
 	ui.pencilLeftStart = function(event) {
@@ -72,7 +77,7 @@ editors.map(function(index) {
 	
 	var handlers = {
 		onUpdatePaste: function(data) {
-			var imageData = writers[data.layer].createImageData(Math.abs(data.bounds.x[0]-data.bounds.x[1]), Math.abs(data.bounds.y[0]-data.bounds.y[1]));
+			var imageData = writers[data.layer].createImageData(Math.abs(data.bounds.x[0]-data.bounds.x[1])+1, Math.abs(data.bounds.y[0]-data.bounds.y[1])+1);
 			imageData.data.set(new Uint8ClampedArray(data.data));
 			writers[data.layer].putImageData(imageData, data.bounds.x[0], data.bounds.y[0]);
 		},

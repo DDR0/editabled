@@ -75,8 +75,8 @@ miscellaneousUtilities.init = function(globalObject, targetObject) {
 	};
 	
 	t.convertBuffer = function(oldBuffer, options) { //Returns a copy of part of the old buffer. Options are: "area", takes a boundingBox (as returned by getBoundingBox, above); "outputChannels", which takes an integer or iteratable list containing the index of the target channel to map to. The index of the list is the OLD CHANNEL, and the contents at that index are the NEW CHANNEL. For example, to switch from [rgba] to [rgb], you would use [0,1,2] (or just the integer 3, which would be equivalent), with inputChannels set to 4. To switch back, use [0,1,2,,], with inputChannels set to 3. Number of output channels is implied by list length. Essentially a map of input chan → output chan. "inputChannels" is always an integer value.
-		var width = options.area.width-1;
-		var height = options.area.height-1;
+		var width = options.area.width;
+		var height = options.area.height;
 		var depthIn = options.inputChannels || 4;
 		var depthOut = options.outputChannels || 4;
 		if(typeof depthOut === "number") {
@@ -93,8 +93,10 @@ miscellaneousUtilities.init = function(globalObject, targetObject) {
 			throw "[ILH48] options.bufferWidth isn't valid (" + options.bufferWidth + ")";
 		}
 		
-		_.range(options.area.x1, options.area.x2).map(function(oldx, newx) { //Convert to for loops.
-			_.range(options.area.y1, options.area.y2).map(function(oldy, newy) {
+		var rangeX = _.range(options.area.x1, options.area.x2+1);
+		var rangeY = _.range(options.area.y1, options.area.y2+1);
+		rangeX.map(function(oldx, newx) { //TODO: Convert to for loops for additional speed.
+			rangeY.map(function(oldy, newy) {
 				depthOut.map(function(newChan, oldChan) {
 					if(isFinite(newChan)) {
 						returnUintArray[(newy*width+newx)*depthOut.length+newChan] = oldUint8Arrays[(oldy*bufferWidth+oldx)*depthIn+oldChan];
@@ -104,31 +106,6 @@ miscellaneousUtilities.init = function(globalObject, targetObject) {
 		});
 		
 		return imageToReturn;
-	};
-	
-	t.pasteRect = function(newData, oldData, numberOfChannels) { //Paste oldData into newData. Both datas need a width field and a []able data field. OldData may contain an x and y value specifying offset.
-		oldData.x = oldData.x || 0;
-		oldData.y = oldData.y || 0;
-		numberOfChannels = numberOfChannels || 4;
-		
-		var oldDataY = oldData.y;
-		var oldDataX = oldData.x;
-		var newDataW = newData.width;
-		var oldDataW = oldData.width;
-		var newDataD = newData.data;
-		var oldDataD = oldData.data;
-		var oldDataRows = oldData.data.byteLength/oldData.width;
-		
-		var x, y, newCompXY, oldCompXY, chan;
-		for (x = 0; x < oldData.width; x++) {
-			for (y = 0; y < oldDataRows; y++) {
-				newCompXY = ((oldDataY+y)*newDataW+(oldDataX+x))*numberOfChannels;
-				oldCompXY = (y*oldDataW+x)*numberOfChannels;
-				for (chan = 0; chan < numberOfChannels; chan++) {
-						newDataD[newCompXY+chan] = oldDataD[oldCompXY+chan]; //This '=' is the slow part.
-				}
-			}
-		}
 	};
 	
 	t.normalizeCoords = function(cmd, newOrigin) { //Cmd is a standard drawing command with [xs]/[ys], and newOrigin is a map containing an x/y value to be zeroed to. If you had a [100]/[100] points lists, and you passed in a bounding box that started at 90/90, then you would get a standard draw event back out but with the points lists [10]/[10]. "bufferWidth" is how many pixels wide the old buffer is.
@@ -162,7 +139,7 @@ miscellaneousUtilities.init = function(globalObject, targetObject) {
 	
 	t.setLine = function(cmd, drawUpdateRect) {
 		if(drawUpdateRect) t.setAll({data:cmd.data, 0:_.random(0,127), 1:_.random(127,255), 2:_.random(127,255), 3:255});
-		var newXs = [cmd.x[0]];
+		var newXs = [cmd.x[0]]; //NOTE: This means that there is one pixel of overdraw for mouse-drawn multiline segments, since the mouse starts and ends at the same point if you're dragging it. Bounding box is calculated from points. Not a problem, as long as we're not calculating transparency in an additional manner. (Then, you'll see you draw two pixels at points where the mouse was sampled.)
 		var newYs = [cmd.y[0]];
 		_.range(1, cmd.x.length).map(function(index) {
 			var startX = _.last(newXs) + 0.5;
@@ -191,6 +168,7 @@ miscellaneousUtilities.init = function(globalObject, targetObject) {
 			newXs = newXs.concat(xSteps, cmd.x[index]);
 			newYs = newYs.concat(ySteps, cmd.y[index]);
 		});
+		
 		cmd.x = newXs;
 		cmd.y = newYs;
 		//c.log('lines', [cmd.x, cmd.y])
