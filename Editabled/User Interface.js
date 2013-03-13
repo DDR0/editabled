@@ -25,7 +25,7 @@ editors.map(function(index) {
 		data.to = data.to || 'ui';
 		
 		var boundingBox = cUtils.getBoundingBox(data.points);
-		var iData = cUtils.croppedImage(writers[data.to], boundingBox);
+		var iData = writers[data.to].createImageData(boundingBox.width, boundingBox.height);
 		var command = {
 			x:data.points.x,
 			y:data.points.y, 
@@ -37,8 +37,7 @@ editors.map(function(index) {
 				if(isFinite(value)) command[index] = value;
 			});
 		} else {
-			command[0] = 255;
-			command[3] = 255;
+			_.extend(command, ui.tool.colour);
 		}
 		cUtils.setLine(
 			cUtils.normalizeCoords(command, boundingBox)/*, true*/);
@@ -51,11 +50,11 @@ editors.map(function(index) {
 	};
 	
 	ui.pencilLeftStart = function(event) {
-		drawLine({'to':'underlay', 'points': {x:[event.x], y:[event.y]}}); //Down has no access to the old position. You can only be down in one place, right?
+		drawLine({'to':'uiCache', 'points': {x:[event.x], y:[event.y]}}); //Down has no access to the old position. You can only be down in one place, right?
 	};
 	
 	ui.pencilLeftContinue = function(event) {
-		drawLine({'to':'underlay', 'points': {x:[event.x, event.oldX], y:[event.y, event.oldY]}});
+		drawLine({'to':'uiCache', 'points': {x:[event.x, event.oldX], y:[event.y, event.oldY]}});
 	};
 	
 	ui.pencilAddPreview = function(event) {
@@ -80,6 +79,7 @@ editors.map(function(index) {
 			var imageData = writers[data.layer].createImageData(Math.abs(data.bounds.x[0]-data.bounds.x[1])+1, Math.abs(data.bounds.y[0]-data.bounds.y[1])+1);
 			imageData.data.set(new Uint8ClampedArray(data.data));
 			writers[data.layer].putImageData(imageData, data.bounds.x[0], data.bounds.y[0]);
+			writers.uiCache.clearRect( data.bounds.x[0], data.bounds.y[0], Math.abs(data.bounds.x[0]-data.bounds.x[1])+1, Math.abs(data.bounds.y[0]-data.bounds.y[1])+1);
 		},
 	};
 	

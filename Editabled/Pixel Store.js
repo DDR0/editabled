@@ -89,7 +89,7 @@ var onDrawLine = function(data) { //Draw a number of pixels to the canvas.
 	var layer = pickImage(data.layer);
 	var imageData = new Uint8ClampedArray(layer.buffer);
 	cUtils.setLine(_.extend({'data':imageData, 'width':layer.width, 'chan':layer.channels}, data.points, data.tool.colour));
-	_.range(500000);
+	//_.range(500000);
 	sendUpdate(data.layer, boundingBox);
 };
 
