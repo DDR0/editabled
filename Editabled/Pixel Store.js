@@ -33,6 +33,7 @@ miscellaneousUtilities.init(self, self.cUtils = {});
 
 
 var newLayerCanvas = function(cmd) {
+	cmd = cmd || {};
 	cmd.type = 'canvas';
 	cmd.name = cmd.name || 'new layer';
 	cmd.channels = cmd.channels || 8; //Uint8 rgba ∑ 4, Uint32 tool# = 4
@@ -42,6 +43,7 @@ var newLayerCanvas = function(cmd) {
 
 
 var newLayerFolder = function(cmd) {
+	cmd = cmd || {};
 	cmd.type = 'folder';
 	cmd.name = cmd.name || 'new folder';
 	cmd.layers = [];
@@ -60,7 +62,7 @@ var addToImageTree = function(obj, path) { //TODO: Path is a list of indexes spe
 
 
 //var layers = [newCanvas({height:1, width:1, channels:4})];
-var imageTree = newLayerFolder({});
+var imageTree = newLayerFolder();
 
 
 // === Start event handlers. ===

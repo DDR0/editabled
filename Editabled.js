@@ -44,9 +44,9 @@ window.loadEditabled = function() {
 		}
 	};
 	
-	var failToLoad = _.once(function() {
-		c.log('(Problem is in this file.)');
-		window.alert('Well, bother. An error occured while downloading the editor.');
+	var failToLoad = _.once(function(err) {
+		c.warn('AJAX error ' + err.status + ": " + err.statusText + ".\n" + err.responseText);
+		window.alert('Well, bother. An error occured while downloading the editor. Check that we\'re still connected to the internet, then try again. If that didn\'t work, then we\'re hooped. Sorry.');
 	});
 	
 	window.setTimeout(function() { //The 50ms delay is required, here. Sticking the ajax in the DOMContentLoaded event, after the drawing of the text, doesn't help one iota in chrome. Works in Firefox, though.

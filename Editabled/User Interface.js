@@ -11,17 +11,18 @@ editors.map(function(index) {
 	ui.tool = { //The post-computation tool we'll be using.
 		type: 'pencil',
 		colour: {1:255, 3:255}, //0→red 1→green 2→blue 3→alpha, in case I forget and 1-index it again.
+		layer: [0],
+		
 	};
-	ui.activeLayer=[0]; //We set up layer 0 in Setup. activeLayer is a layer path, as described in Pixel Store.
 	
 	var drawLine = function(data) {
 		if(data.to !== 'ui' && data.to !== undefined) {
 			pxStore.postMessage({
 				'command': 'drawLine',
-				'data': (data.tool=ui.tool, data.layer=ui.activeLayer, data),
+				'data': (data.tool=ui.tool, data),
 			});
 		}	
-		delete data.tool; delete data.layer; //Don't need these anymore.
+		delete data.tool; //Don't need these anymore.
 		data.to = data.to || 'ui';
 		
 		var boundingBox = cUtils.getBoundingBox(data.points);
@@ -37,7 +38,9 @@ editors.map(function(index) {
 				if(isFinite(value)) command[index] = value;
 			});
 		} else {
-			_.extend(command, ui.tool.colour);
+			//_.extend(command, ui.tool.colour);
+			command[0] = 255;
+			command[3] = 255;
 		}
 		cUtils.setLine(
 			cUtils.normalizeCoords(command, boundingBox)/*, true*/);
@@ -65,6 +68,15 @@ editors.map(function(index) {
 		drawLine({'points': {x:[event.oldX], y:[event.oldY]}, 'colour': [,,,0]});
 	};
 	
+	
+	ui.cycleColour = function(event) { //event, has event.pressedKeyCodes for keys already pressed! :D
+		c.log('cycling colour', event.pressedKeyCodes);
+		_.range(3).map(function(index) {
+			ui.tool.colour[index] = Math.random()*255;
+		});
+		//delete ui.tool.colour[Math.round(Math.random()*2)];
+		c.log(ui.tool.colour);
+	};
 	
 	
 	pxStore.addEventListener('message', function(event) {

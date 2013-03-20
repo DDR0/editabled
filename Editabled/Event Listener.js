@@ -1,4 +1,6 @@
 /*global _ $ jQuery console c editors*/
+
+var edFocusedCanvas = false;
 editors.map(function(index) {
 	"use strict";
 	var canvas = editors[index];
@@ -57,18 +59,23 @@ editors.map(function(index) {
 		//c.log(utils.tagStr('event ' + targetName));
 		if((mLoc || flags.noNew) && ui[targetName]) {
 			mLoc = mLoc || {};
-			var fnArg = {x: mLoc.x, //Setting "prototype: mLoc" doesn't work. __proto__ only works in chrome.
-					     y: mLoc.y - utils.useMouseOffsetWorkaround,
-					     oldX: oldMousePosition.x,
-					     oldY: oldMousePosition.y - utils.useMouseOffsetWorkaround,
-				         pressure: pressure(event),
-				        };
-			if(utils.useDelayInputWorkaround) {
-				window.setTimeout(ui[targetName], 0, fnArg);
-			} else {
-				ui[targetName](fnArg);
-			}
+			var fnArg = {
+				x: mLoc.x, //Setting "prototype: mLoc" doesn't work. __proto__ only works in chrome.
+				y: mLoc.y - utils.useMouseOffsetWorkaround, //For firefox, basically.
+				oldX: oldMousePosition.x,
+				oldY: oldMousePosition.y - utils.useMouseOffsetWorkaround,
+				pressure: pressure(event),
+			};
+			sendEventToUI(targetName, fnArg);
 			return mLoc;
+		}
+	};
+	
+	var sendEventToUI = function(targetName, args) {
+		if(utils.useDelayInputWorkaround) {
+			window.setTimeout(ui[targetName], 0, args);
+		} else {
+			ui[targetName](args);
 		}
 	};
 	
@@ -90,6 +97,7 @@ editors.map(function(index) {
 			}
 			if(mLoc) oldMousePosition = mLoc;
 		}
+		edFocusedCanvas = keyDownEvent;
 		return stopAllPropagation(event);
 	};
 	canvas.addEventListener('mousedown', function(event) {
@@ -102,7 +110,7 @@ editors.map(function(index) {
 		return stopAllPropagation(event);
 	});
 	
-	canvas.addEventListener('mousemove', function(event) {
+	var continueMouseEvent = function(event, noSwallow) {
 		var mLoc;
 		if(buttonDown(event)) {
 			switch(event.button) {
@@ -122,6 +130,17 @@ editors.map(function(index) {
 		}
 		if(mLoc) oldMousePosition = mLoc;
 		return stopAllPropagation(event);
+	};
+	canvas.addEventListener('mousemove', function(event) {
+		if(!edFocusedCanvas) {edFocusedCanvas = keyDownEvent;}
+		return continueMouseEvent(event);
+	});
+	
+	$(canvas).bind('mousewheel', function(event, magnitude) { //'wheel' seems to be the standards-supported event, but it's not supported in all browsers. This event relies on a jQuery extention.
+		if(!event.altKey) {
+			c.log('mouse scroll', magnitude);
+			return stopAllPropagation(event);
+		}
 	});
 	
 	var finishMouseEvent = function(event) {
@@ -150,11 +169,52 @@ editors.map(function(index) {
 		});
 		return finishMouseEvent(event);
 	});
-	canvas.addEventListener('mouseout', finishMouseEvent);
+	canvas.addEventListener('mouseout', function(event) {
+		edFocusedCanvas = false;
+		return finishMouseEvent(event);
+	});
 	
 	
 	//This makes a mouse-up event fire even if we're not on the canvas, so that we don't release the mouse button off-canvas and then start drawing lines on canvas even though we're not pressing anything. Basically – it's a hack for not being able to ask 'is a mouse button actually down'.
 	document.addEventListener('mouseup', function(event) {
 		popMouseButtons(event);
 	});
+	
+	
+	var keyDownEvent = function(event, key) { //key is a numeric keycode
+		var action = utils.codeToAction(key);
+		c.log('key action: ', action);
+		if(action && ui[action]) {
+			var args = {
+				pressedKeyCodes: keysDown,
+			};
+			sendEventToUI(action, args);
+			return stopAllPropagation(event); //Don't do this for keys we don't use.
+		} else {
+			return true; //'true' being the opposite of 'stopAllPropagation'. Because stopAllPropagation returns false.
+		}
+	};
+});
+
+
+var keysDown = {};
+
+document.addEventListener('keydown', function(event) {
+	"use strict";
+	var key = event.keyCode || event.which;
+	if(!keysDown[key]) { //No reason to fire key presses repeatedly other than text input, which we're not doing here.
+		keysDown[key] = true;
+		c.log('Registered key ' + key + ' (on canvas: ' + !!edFocusedCanvas + ')');
+		return edFocusedCanvas ? edFocusedCanvas(event, key) : true;
+	} else {
+		return true;
+	}
+});
+
+document.addEventListener('keyup', function(event) {
+	"use strict";
+	var key = event.keyCode || event.which;
+	keysDown[key] = false;
+	c.log('Unregistered key ' + key);
+	return true;
 });

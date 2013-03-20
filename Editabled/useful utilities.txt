@@ -4,11 +4,11 @@ openssl rand -base64 5
 ln Order of Args:
 ln -s existing_target new_name
 
-Notes:
-Citadel (normal, MP)
-./game --module=Citadel --level=title1.cfg --tbs-server
-./game --module=Citadel --server=theargentlark.com:23056
-
-
 Space
 Only start worrying about space at around 9 digits of bytes. 7 doesn't even _register_.
+
+Server: (look for inet)
+ip addr show wlan0
+
+Random CSS colour from JS:
+'#'+Math.floor(Math.random()*16777215).toString(16);
