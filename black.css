@@ -12,11 +12,6 @@ p {
 	margin: 8px;
 }
 
-canvas {
-	/*border: 3px ridge;*/
-	color: white;
-}
-
 canvas.image-editor {
 	/*margin: -3px;*/ /*Reenable this (and the border) when we've got something to test against on-canvas.*/
 	background-color: black;
@@ -27,4 +22,8 @@ canvas.image-editor {
 		url(data:image/gif;base64,R0lGODlhDwAPAKEAAAAAAP///wAAAAAAACH5BAEKAAIALAAAAAAPAA8AAAIilI+pAqsQmjtQThYvnaCnbkFBZogk4yEgp5Un9zpVy9BTAQA7)
 			7 7,
 		crosshair;
+}
+
+canvas.image-editor:hover {
+	box-shadow: 0 0 0px 1px lightgrey, 0 0 2px 2px darkgreen;
 }

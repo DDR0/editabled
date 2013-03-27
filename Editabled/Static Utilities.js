@@ -1,9 +1,13 @@
 /*global _, c*/
-var miscellaneousUtilities = {};
+var miscellaneousUtilities = {}; //These are more… functional functions, if that makes any sense. They're used by both the Pixel Store worker and the normal UI js.
 miscellaneousUtilities.init = function(globalObject, targetObject) {
 	"use strict";
 	globalObject.miscellaneousUtilities = undefined; //We can't delete this in a worker context.
 	var t = targetObject;
+	
+	
+	/* MISC UTILITIES */
+	
 	
 	t.eventName = function(header, name) {
 		return header+_.head(name).toUpperCase()+name.slice(1, name.length);
@@ -12,6 +16,10 @@ miscellaneousUtilities.init = function(globalObject, targetObject) {
 	t.eventNameFromCommand = function(header, event) {
 		return t.eventName(header, event.data.command);
 	};
+	
+	
+	/* BITMAP FUNCTIONS */
+	
 	
 	t.getBoundingBox = function(points) {
 		var xs = _.sortBy(points.x, function(a) {return a;}); //points.x.sort() just sorts the array in place
@@ -174,4 +182,43 @@ miscellaneousUtilities.init = function(globalObject, targetObject) {
 		//c.log('lines', [cmd.x, cmd.y])
 		t.setPixels(cmd);
 	};
+	
+	
+	/* LAYER FUNCTION */
+	
+	
+	t.getLayer = function unpackLayers(lobj, path) { //Returns the layer object the path is pointing at.
+		if(path.length === 1) {
+			return unpackLayers(lobj.layers[_.head(path)], _.tail(path)); //lobj = layer object, be it a window, folder, or canvas
+		} else {
+			return lobj;
+		}
+	};
+	
+	t.insertLayer = function(lobj, path, layer) { //Puts the layer in the layer stack at path.
+		var parentObj = t.getLayer(lobj, _.initial(path));
+		if(parentObj.type === 'canvas') throw {'message': "Tried to add layer inside a canvas layer.", 'layers': layers, 'path': path};
+		var index = _.last(path);
+		parentObj.layers = parentObj.layers.slice(0, index).concat(layer, parentObj.layers.slice(index, parentObj.layers.length));
+	};
+	
+	t.removeLayer = function(lobj, path) { //Removes, and returns, the layer specified by path.
+		var parentObj = t.getLayer(lobj, _.initial(path));
+		var index = _.last(path);
+		var layer = parentObj[index];
+		parentObj.layers = parentObj.layers.slice(0, index).concat(parentObj.layers.slice(index+1, parentObj.layers.length));
+		return layer;
+	};
+	
 };
+
+/* OLD:
+eu = editors.utils; gi = glob.imageTree;
+gi = glob.newLayerWindow({});
+eu.insertLayer(gi, [0,0], glob.newLayerFolder({}));
+gi;
+*//* NEW:
+eu = editors.utils; gi = glob.imageTree;
+eu.insertLayer(gi, [0], glob.newLayerFolder({}));
+gi;
+*/

@@ -1,10 +1,10 @@
 /* jshint worker: true, globalstrict: true, strict: false */
-/* global console, _, self, miscellaneousUtilities, cUtils, ArrayBuffer, DataView, Uint8Array */
+/* global console, _, self, miscellaneousUtilities, cUtils, ArrayBuffer, DataView, Uint8Array, imageTree*/
 "use strict";
 
 //Side note: Due to the webworker environment, we often get debug output back without so much as a hint as to where it came from. For this reason, ID tags are scattered about, taking the form of [xxxxx]. To find a tag from the output, just do a multifile search for it.
 
-self.importScripts('Underscore 1.4.4.js', "Miscellaneous Utilities.js"); //~/*.js on Chrome, ~/Editabled/*.js on Firefox. Fixed with soft filesystem link.
+self.importScripts('Underscore 1.4.4.js', "Static Utilities.js"); //~/*.js on Chrome, ~/Editabled/*.js on Firefox. Fixed with soft filesystem link.
 
 //Could import, but it's a bit of a pain. Comment out for final release.
 var c;
@@ -32,37 +32,45 @@ if(typeof console === 'undefined') {
 miscellaneousUtilities.init(self, self.cUtils = {});
 
 
-var newLayerCanvas = function(cmd) {
+var wCounter = 0;
+var newLayerWindow = function(cmd) {
 	cmd = cmd || {};
-	cmd.type = 'canvas';
-	cmd.name = cmd.name || 'new layer';
-	cmd.channels = cmd.channels || 8; //Uint8 rgba ∑ 4, Uint32 tool# = 4
-	cmd.buffer = new ArrayBuffer((cmd.width*cmd.height)*cmd.channels);
-	return cmd;
-};
-
-
-var newLayerFolder = function(cmd) {
-	cmd = cmd || {};
-	cmd.type = 'folder';
-	cmd.name = cmd.name || 'new folder';
+	cmd.type = 'window';
+	cmd.name = cmd.name || 'Window #'+(++wCounter);
 	cmd.layers = [];
 	return cmd;
 };
 
-
-var pickImage = function(path) { //TODO: Returns an image from the imageTree.
-	return imageTree.layers[0];
+var fCounter = 0;
+var newLayerFolder = function(cmd) {
+	cmd = cmd || {};
+	cmd.type = 'folder';
+	cmd.name = cmd.name || 'Folder #'+(++fCounter);
+	cmd.layers = [];
+	return cmd;
 };
 
+var cCounter = 0;
+var newLayerCanvas = function(cmd) {
+	cmd = cmd || {};
+	cmd.type = 'canvas';
+	cmd.name = cmd.name || 'Canvas #'+(++cCounter);
+	cmd.channels = cmd.channels || 8; //Uint8 rgba ∑ 4, Uint32 tool# = 4
+	cmd.buffer = new ArrayBuffer((cmd.width*cmd.height)*(cmd.channels || 4));
+	return cmd;
+};
+
+var pickImage = function(path) { //TODO: Returns an image from the imageTree.
+	/*c.log('path', path);
+	return imageTree.layers[0];*/
+	return cUtils.getLayer(imageTree, path);
+};
 
 var addToImageTree = function(obj, path) { //TODO: Path is a list of indexes specifying where to add the new layer. Layer must be a type 'folder' to be subpathable. For example, the path [3,0,5] would mean, 'in the third folder from the top, in the top folder, the fifth element down is now obj and the old fifth element is now the sixth element.'
 	imageTree.layers = [].concat(imageTree.layers.slice(0,path[0]), obj, imageTree.layers.slice(path[0]));
 };
 
 
-//var layers = [newCanvas({height:1, width:1, channels:4})];
-var imageTree = newLayerFolder();
 
 
 // === Start event handlers. ===
@@ -79,20 +87,24 @@ var onPing = function() { //Fires off a simple message.
 };
 
 
+var onInitializeLayerTree = function(data) {
+	self.imageTree = newLayerFolder(_.clone(data));
+	addToImageTree(newLayerCanvas(_.clone(data)), [0]);
+};
+
+
 var onAddLayer = function(data) {
-	var path = data.path;
-	delete data.path;
-	addToImageTree(newLayerCanvas(data), path);
+	addToImageTree(newLayerCanvas(_.omit(data, 'path')), data.path);
 };
 
 
 var onDrawLine = function(data) { //Draw a number of pixels to the canvas.
 	var boundingBox = cUtils.getBoundingBox(data.points);
-	var layer = pickImage(data.layer);
+	var layer = cUtils.getLayer(imageTree, data.tool.layer);
 	var imageData = new Uint8ClampedArray(layer.buffer);
 	cUtils.setLine(_.extend({'data':imageData, 'width':layer.width, 'chan':layer.channels}, data.points, data.tool.colour));
-	//_.range(500000);
-	sendUpdate(data.layer, boundingBox);
+	//_.range(500000); //Test line-drawing with a busy delay.
+	sendUpdate(data.tool.layer, boundingBox);
 };
 
 
@@ -100,7 +112,7 @@ var onDrawLine = function(data) { //Draw a number of pixels to the canvas.
 
 
 var sendUpdate = function(layer, boundingBox) {
-	layer = pickImage(layer);
+	layer = cUtils.getLayer(imageTree, layer);
 	
 	//Update background.
 	var bufferToReturn = cUtils.convertBuffer(layer.buffer, {area:boundingBox, bufferWidth:layer.width, outputChannels:4, inputChannels:8});

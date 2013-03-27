@@ -159,6 +159,5 @@ editors.map(function(index) {
 	
 	//pingWorker();
 	//floodCanvas('underlay');
-	//drawingTests();
-	
+	drawingTests();
 });

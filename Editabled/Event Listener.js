@@ -80,25 +80,29 @@ editors.map(function(index) {
 	};
 	
 	var startMouseEvent = function(event) {
-		if(buttonsDown[event.button]) {
-			var mLoc;
-			sendMouseEventToUI(event, 'removePreview', {noNew:true});
-			switch(event.button) {
-				case 0:
-					mLoc = sendMouseEventToUI(event, 'leftStart');
-					if(mLoc) mouseLeftButtonDown = true;
-					break;
-				case 1:
-					mLoc = sendMouseEventToUI(event, 'middleStart');
-					break;
-				case 2:
-					mLoc = sendMouseEventToUI(event, 'rightStart');
-					break;
+		if(!event.altKey) {
+			if(buttonsDown[event.button]) {
+				var mLoc;
+				sendMouseEventToUI(event, 'removePreview', {noNew:true});
+				switch(event.button) {
+					case 0:
+						mLoc = sendMouseEventToUI(event, 'leftStart');
+						if(mLoc) mouseLeftButtonDown = true;
+						break;
+					case 1:
+						mLoc = sendMouseEventToUI(event, 'middleStart');
+						break;
+					case 2:
+						mLoc = sendMouseEventToUI(event, 'rightStart');
+						break;
+				}
+				if(mLoc) oldMousePosition = mLoc;
 			}
-			if(mLoc) oldMousePosition = mLoc;
+			edFocusedCanvas = keyDownEvent;
+			return stopAllPropagation(event);
+		} else {
+			return true;
 		}
-		edFocusedCanvas = keyDownEvent;
-		return stopAllPropagation(event);
 	};
 	canvas.addEventListener('mousedown', function(event) {
 		pushMouseButtons(event);
@@ -107,29 +111,37 @@ editors.map(function(index) {
 	canvas.addEventListener('mouseover', startMouseEvent);
 	
 	canvas.addEventListener('contextmenu', function(event) { //No context menu for us. We need that right mouse button! The button event itself will be captured by the 'mousedown' event, above.
-		return stopAllPropagation(event);
+		if(!event.altKey) {
+			return stopAllPropagation(event);
+		} else {
+			return true;
+		}
 	});
 	
 	var continueMouseEvent = function(event, noSwallow) {
-		var mLoc;
-		if(buttonDown(event)) {
-			switch(event.button) {
-				case 0:
-					mLoc = sendMouseEventToUI(event, 'leftContinue');
-					break;
-				case 1:
-					mLoc = sendMouseEventToUI(event, 'middleContinue');
-					break;
-				case 2:
-					mLoc = sendMouseEventToUI(event, 'rightContinue');
-					break;
+		if(!event.altKey) {
+			var mLoc;
+			if(buttonDown(event)) {
+				switch(event.button) {
+					case 0:
+						mLoc = sendMouseEventToUI(event, 'leftContinue');
+						break;
+					case 1:
+						mLoc = sendMouseEventToUI(event, 'middleContinue');
+						break;
+					case 2:
+						mLoc = sendMouseEventToUI(event, 'rightContinue');
+						break;
+				}
+			} else {
+				sendMouseEventToUI(event, 'removePreview', {noNew:true});
+				mLoc = sendMouseEventToUI(event, 'addPreview');
 			}
+			if(mLoc) oldMousePosition = mLoc;
+			return stopAllPropagation(event);
 		} else {
-			sendMouseEventToUI(event, 'removePreview', {noNew:true});
-			mLoc = sendMouseEventToUI(event, 'addPreview');
+			return true;
 		}
-		if(mLoc) oldMousePosition = mLoc;
-		return stopAllPropagation(event);
 	};
 	canvas.addEventListener('mousemove', function(event) {
 		if(!edFocusedCanvas) {edFocusedCanvas = keyDownEvent;}
@@ -140,28 +152,34 @@ editors.map(function(index) {
 		if(!event.altKey) {
 			c.log('mouse scroll', magnitude);
 			return stopAllPropagation(event);
+		} else {
+			return true;
 		}
 	});
 	
 	var finishMouseEvent = function(event) {
-		if(buttonsDown[event.button]) {
-			switch(event.button) {
-				case 0:
-					mouseLeftButtonDown = false;
-					sendMouseEventToUI(event, 'leftFinish');
-					break;
-				case 1:
-					sendMouseEventToUI(event, 'middleFinish');
-					break;
-				case 2:
-					sendMouseEventToUI(event, 'rightFinish');
-					break;
+		if(!event.altKey) {
+			if(buttonsDown[event.button]) {
+				switch(event.button) {
+					case 0:
+						mouseLeftButtonDown = false;
+						sendMouseEventToUI(event, 'leftFinish');
+						break;
+					case 1:
+						sendMouseEventToUI(event, 'middleFinish');
+						break;
+					case 2:
+						sendMouseEventToUI(event, 'rightFinish');
+						break;
+				}
+				sendMouseEventToUI(event, 'addPreview');
+			} else {
+				sendMouseEventToUI(event, 'removePreview', {noNew:true});
 			}
-			sendMouseEventToUI(event, 'addPreview');
+			return stopAllPropagation(event);
 		} else {
-			sendMouseEventToUI(event, 'removePreview', {noNew:true});
+			return true;
 		}
-		return stopAllPropagation(event);
 	};
 	canvas.addEventListener('mouseup', function(event) {
 		editors.map(function(index) {
@@ -205,6 +223,7 @@ document.addEventListener('keydown', function(event) {
 	if(!keysDown[key]) { //No reason to fire key presses repeatedly other than text input, which we're not doing here.
 		keysDown[key] = true;
 		c.log('Registered key ' + key + ' (on canvas: ' + !!edFocusedCanvas + ')');
+		c.log('returned', edFocusedCanvas ? edFocusedCanvas(event, key) : true);
 		return edFocusedCanvas ? edFocusedCanvas(event, key) : true;
 	} else {
 		return true;
