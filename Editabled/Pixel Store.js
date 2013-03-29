@@ -34,6 +34,8 @@ miscellaneousUtilities.init(self, self.cUtils = {});
 
 var wCounter = 0;
 var newLayerWindow = function(cmd) {
+	if(!cmd.width || !cmd.height) c.error('The pixel store tried to create a newLayerWindow with a width/height of ' + cmd.width + '/' + cmd.height + '.');
+	cmd.x = cmd.x || 0; cmd.y = cmd.y || 0;
 	cmd = cmd || {};
 	cmd.type = 'window';
 	cmd.name = cmd.name || 'Window #'+(++wCounter);
@@ -44,6 +46,7 @@ var newLayerWindow = function(cmd) {
 var fCounter = 0;
 var newLayerFolder = function(cmd) {
 	cmd = cmd || {};
+	cmd.x = cmd.x || 0; cmd.y = cmd.y || 0;
 	cmd.type = 'folder';
 	cmd.name = cmd.name || 'Folder #'+(++fCounter);
 	cmd.layers = [];
@@ -53,17 +56,13 @@ var newLayerFolder = function(cmd) {
 var cCounter = 0;
 var newLayerCanvas = function(cmd) {
 	cmd = cmd || {};
+	cmd.x = cmd.x || 0; cmd.y = cmd.y || 0;
 	cmd.type = 'canvas';
 	cmd.name = cmd.name || 'Canvas #'+(++cCounter);
 	cmd.channels = cmd.channels || 8; //Uint8 rgba ∑ 4, Uint32 tool# = 4
 	cmd.buffer = new ArrayBuffer((cmd.width*cmd.height)*(cmd.channels || 4));
+	cmd.exteriorColour = [255,,,255]; //This is what is returned when we are *outside* the layer.
 	return cmd;
-};
-
-var pickImage = function(path) { //TODO: Returns an image from the imageTree.
-	/*c.log('path', path);
-	return imageTree.layers[0];*/
-	return cUtils.getLayer(imageTree, path);
 };
 
 var addToImageTree = function(obj, path) { //TODO: Path is a list of indexes specifying where to add the new layer. Layer must be a type 'folder' to be subpathable. For example, the path [3,0,5] would mean, 'in the third folder from the top, in the top folder, the fifth element down is now obj and the old fifth element is now the sixth element.'
@@ -88,7 +87,7 @@ var onPing = function() { //Fires off a simple message.
 
 
 var onInitializeLayerTree = function(data) {
-	self.imageTree = newLayerFolder(_.clone(data));
+	self.imageTree = newLayerWindow(_.clone(data));
 	addToImageTree(newLayerCanvas(_.clone(data)), [0]);
 };
 
@@ -102,9 +101,25 @@ var onDrawLine = function(data) { //Draw a number of pixels to the canvas.
 	var boundingBox = cUtils.getBoundingBox(data.points);
 	var layer = cUtils.getLayer(imageTree, data.tool.layer);
 	var imageData = new Uint8ClampedArray(layer.buffer);
-	cUtils.setLine(_.extend({'data':imageData, 'width':layer.width, 'chan':layer.channels}, data.points, data.tool.colour));
-	//_.range(500000); //Test line-drawing with a busy delay.
+	cUtils.setLine(_.defaults({'data':imageData, 'width':layer.width, 'chan':layer.channels}, data.points, data.tool.colour));
+	//_.range(500000); //Test line-drawing with a busy wait.
 	sendUpdate(data.tool.layer, boundingBox);
+};
+
+var onFlash = function() {
+	var window = cUtils.getLayer(imageTree, []);
+	var boundingBox = cUtils.getBoundingBox({x:[window.x, window.x + window.width], y:[window.y, window.y + window.height]});
+	sendUpdate([0], boundingBox); //Write it to the output. Just a little hack until layer-specific rendering works... It just uses getLayer atm.
+};
+
+var onForcefill = function(data) {
+	c.log('pxs forcefilling');
+	var layer = cUtils.getLayer(imageTree, data.tool.layer);
+	var canvas = cUtils.getLayer(imageTree, []);
+	cUtils.setAll(_.defaults({data: new Uint8ClampedArray(layer.buffer)}, data.tool.colour));
+	var boundingBox = cUtils.getBoundingBox({x:[canvas.x, canvas.x + canvas.width], y:[canvas.y, canvas.y + canvas.height]});
+	sendUpdate([0], boundingBox);
+	c.log(data.tool);
 };
 
 
@@ -118,7 +133,7 @@ var sendUpdate = function(layer, boundingBox) {
 	var bufferToReturn = cUtils.convertBuffer(layer.buffer, {area:boundingBox, bufferWidth:layer.width, outputChannels:4, inputChannels:8});
 	var bLength = bufferToReturn.byteLength;
 	self.postMessage({
-		'command': 'updatePaste',
+		'command': 'pasteUpdate',
 		'data': {
 			layer: 'underlay',
 			bounds: {

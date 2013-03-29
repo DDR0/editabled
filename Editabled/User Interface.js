@@ -70,13 +70,43 @@ editors.map(function(index) {
 	
 	
 	ui.cycleColour = function(event) { //event, has event.pressedKeyCodes for keys already pressed! :D
-		c.log('cycling colour', event.pressedKeyCodes);
+		//c.log('cycling colour', event.pressedKeyCodes);
 		_.range(3).map(function(index) {
 			ui.tool.colour[index] = Math.random()*255;
 		});
 		//delete ui.tool.colour[Math.round(Math.random()*2)];
 		c.log(ui.tool.colour);
 	};
+	
+	
+	//Some of the debuggier functions follow.
+	
+	
+	ui.flash = function(event) { //Does a full refresh of the pixels from Pixel Store. This should only be for debugging.
+		c.log('flashing memory to screen');
+		_.keys(writers).map(function(name) {
+			writers[name].clearRect(0,0,10000,10000);
+		});
+		pxStore.postMessage({
+			command: 'flash',
+			data: {},
+		});
+	};
+	
+	ui.forcefill = function(event) {
+		c.log('Forcefilling layer ' + ui.tool.layer);
+		pxStore.postMessage({
+			command: 'forcefill',
+			data: {tool:_.defaults({colour:{2:128,3:255}}, ui.tool)},
+		});
+	};
+	
+	
+	ui.selectPencil = function() {ui.tool.type = 'pencil';};
+	
+	
+	
+	//Update functions, fired by Pixel Store.
 	
 	
 	pxStore.addEventListener('message', function(event) {
@@ -87,11 +117,11 @@ editors.map(function(index) {
 	});
 	
 	var handlers = {
-		onUpdatePaste: function(data) {
+		onPasteUpdate: function(data) {
 			var imageData = writers[data.layer].createImageData(Math.abs(data.bounds.x[0]-data.bounds.x[1])+1, Math.abs(data.bounds.y[0]-data.bounds.y[1])+1);
 			imageData.data.set(new Uint8ClampedArray(data.data));
 			writers[data.layer].putImageData(imageData, data.bounds.x[0], data.bounds.y[0]);
-			writers.uiCache.clearRect( data.bounds.x[0], data.bounds.y[0], Math.abs(data.bounds.x[0]-data.bounds.x[1])+1, Math.abs(data.bounds.y[0]-data.bounds.y[1])+1);
+			writers.uiCache.clearRect(data.bounds.x[0], data.bounds.y[0], Math.abs(data.bounds.x[0]-data.bounds.x[1])+1, Math.abs(data.bounds.y[0]-data.bounds.y[1])+1);
 		},
 	};
 	

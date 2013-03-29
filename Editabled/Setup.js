@@ -37,11 +37,11 @@ editors.map(function(index) {
 	canvasDOM.css({'width': canvas.width+'px', 'height': canvas.height+'px',});
 	
 	utils.layer({'command': 'initializeLayerTree', 'data': {
-		'width': canvas.width,
-		'height': canvas.height,
+		'width': 200,//canvas.width,
+		'height': 300,//canvas.height,
 		'name': 'main',
 	}});
-	c.log(utils.tagStr('|'), utils.imageTree);
+	//c.log(utils.tagStr('|'), utils.imageTree);
 	
 	glob = utils;
 		

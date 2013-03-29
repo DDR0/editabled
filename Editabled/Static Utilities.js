@@ -134,7 +134,7 @@ miscellaneousUtilities.init = function(globalObject, targetObject) {
 		});
 	};
 	
-	t.setPixels = function(cmd) { //cmd.data should be a uint8 list. cmd.x/y: A list of x values and a corresponding list of y values to plot points at. drawUpdateRect is an optional arg, for use if you'd like to see the rectangle that was used when drawing the line. For debug use only.
+	t.setPixels = function(cmd) { //cmd.data should be a uint8 list. cmd.x/y: A list of x values and a corresponding list of y values to plot points at. drawUpdateRect is an optional arg, for use if you'd like to see the rectangle that was used when drawing the line. (For debug use only.)
 		if(!cmd.width) throw "width field required, must be greater than 0"; //missing height/data will cause crash soon enough
 		cmd.chan = cmd.chan || 4; //The number of channels deep the current graphic is. Default mapping is RGBA, or four channels. (Channels are numerically defined, like a list, in the command.)
 		_.range(cmd.x.length).map(function(index) {

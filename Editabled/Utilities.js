@@ -22,11 +22,14 @@ editors.map(function(index) {
 		//	 16: 'shift', //Don't need events for these, everything is *registered* anyway.
 		//	 17: 'ctrl',
 		//	 18: 'alt',
-			 37: 'left',
+			 37: 'left',        //Move the viewport.
 			 38: 'up',
 			 39: 'right',
 			 40: 'down',
-			 67: 'cycleColour',
+			 66: 'forcefill',   //b Bucket tool stand-in. Fills the current layer with a colour.
+			 67: 'cycleColour', //c Sets the tool colour to random.
+			 70: 'flash',       //f Discards the contenst of the screen, rerendering everything from layer [0].
+			 80: 'selectPencil',//p Pencil tool.
 		//	 91: 'meta', //We'll not use meta, as it should be reserved for OS commands, eg, meta-r for 'run'.
 		//	117: 'menu', //The menu key isn't swallowed correctly on chrome. It still brings up the menu. Also, I'm using it as my linux 'compose key' – on firefox, it shows up as key #0, while on chrome the event isn't fired at all.
 		};
@@ -52,8 +55,8 @@ editors.map(function(index) {
 				c.error('todo: implement adding layer here');
 				break;
 			case 'initializeLayerTree':
-				utils.imageTree = utils.newLayerWindow(cmd);
-				cUtils.insertLayer(utils.imageTree, [0], utils.newLayerCanvas(cmd));
+				utils.imageTree = utils.newLayerWindow(cmd.data);
+				cUtils.insertLayer(utils.imageTree, [0], utils.newLayerCanvas(cmd.data));
 				break;
 			default:
 				c.warn('Couldn\'t mirror a layer command.', cmd);
