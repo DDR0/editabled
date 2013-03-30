@@ -210,6 +210,15 @@ miscellaneousUtilities.init = function(globalObject, targetObject) {
 		return layer;
 	};
 	
+	
+	t.sizeLayer = function(layer, box) {
+/*		c.log(layer, box);
+		var x1Exp = Math.min(0, box.x1 - layer.x); //x1Exp = Left side expansion required to make box fit in layer. Will be a negative number, since it only needs to go left-er.
+		var y1Exp = Math.min(0, box.y1 - layer.y);
+		var x2Exp = Math.min(0, box.x1 - layer.x);
+		var y2Exp = Math.min(0, box.x1 - layer.x);
+		//Math.floor((45+512)/512)*/
+	};
 };
 
 /* OLD:

@@ -157,7 +157,8 @@ editors.map(function(index) {
 	
 	
 	
-	//pingWorker();
-	//floodCanvas('underlay');
+	pingWorker();
+	floodCanvas('underlay');
 	drawingTests();
+	//drawingTests(['\\']);
 });

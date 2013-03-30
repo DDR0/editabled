@@ -35,12 +35,15 @@ miscellaneousUtilities.init(self, self.cUtils = {});
 var wCounter = 0;
 var newLayerWindow = function(cmd) {
 	if(!cmd.width || !cmd.height) c.error('The pixel store tried to create a newLayerWindow with a width/height of ' + cmd.width + '/' + cmd.height + '.');
-	cmd.x = cmd.x || 0; cmd.y = cmd.y || 0;
 	cmd = cmd || {};
+	cmd.x = cmd.x || 0; cmd.y = cmd.y || 0;
 	cmd.type = 'window';
 	cmd.name = cmd.name || 'Window #'+(++wCounter);
 	cmd.layers = [];
-	return cmd;
+	return _.extend(cmd, cUtils.getBoundingBox({
+		x:[cmd.x||0, (cmd.x||0)+cmd.width],
+		y:[cmd.y||0, (cmd.y||0)+cmd.height]
+	}));
 };
 
 var fCounter = 0;
@@ -50,7 +53,10 @@ var newLayerFolder = function(cmd) {
 	cmd.type = 'folder';
 	cmd.name = cmd.name || 'Folder #'+(++fCounter);
 	cmd.layers = [];
-	return cmd;
+	return _.extend(cmd, cUtils.getBoundingBox({
+		x:[cmd.x||0, (cmd.x||0)+cmd.width],
+		y:[cmd.y||0, (cmd.y||0)+cmd.height]
+	}));
 };
 
 var cCounter = 0;
@@ -61,8 +67,11 @@ var newLayerCanvas = function(cmd) {
 	cmd.name = cmd.name || 'Canvas #'+(++cCounter);
 	cmd.channels = cmd.channels || 8; //Uint8 rgba ∑ 4, Uint32 tool# = 4
 	cmd.buffer = new ArrayBuffer((cmd.width*cmd.height)*(cmd.channels || 4));
-	cmd.exteriorColour = [255,,,255]; //This is what is returned when we are *outside* the layer.
-	return cmd;
+	cmd.exteriorColour = [128,,,255]; //This is what is returned when we render *outside* the layer.
+	return _.extend(cmd, cUtils.getBoundingBox({
+		x:[cmd.x||0, (cmd.x||0)+cmd.width],
+		y:[cmd.y||0, (cmd.y||0)+cmd.height]
+	}));
 };
 
 var addToImageTree = function(obj, path) { //TODO: Path is a list of indexes specifying where to add the new layer. Layer must be a type 'folder' to be subpathable. For example, the path [3,0,5] would mean, 'in the third folder from the top, in the top folder, the fifth element down is now obj and the old fifth element is now the sixth element.'
@@ -89,6 +98,7 @@ var onPing = function() { //Fires off a simple message.
 var onInitializeLayerTree = function(data) {
 	self.imageTree = newLayerWindow(_.clone(data));
 	addToImageTree(newLayerCanvas(_.clone(data)), [0]);
+	c.log('new layer:', newLayerCanvas(_.clone(data)));
 };
 
 
@@ -100,6 +110,8 @@ var onAddLayer = function(data) {
 var onDrawLine = function(data) { //Draw a number of pixels to the canvas.
 	var boundingBox = cUtils.getBoundingBox(data.points);
 	var layer = cUtils.getLayer(imageTree, data.tool.layer);
+	cUtils.sizeLayer(layer, boundingBox);
+	
 	var imageData = new Uint8ClampedArray(layer.buffer);
 	cUtils.setLine(_.defaults({'data':imageData, 'width':layer.width, 'chan':layer.channels}, data.points, data.tool.colour));
 	//_.range(500000); //Test line-drawing with a busy wait.
