@@ -121,7 +121,6 @@ editors.map(function(index) {
 			var imageData = writers[data.layer].createImageData(Math.abs(data.bounds.x[0]-data.bounds.x[1])+1, Math.abs(data.bounds.y[0]-data.bounds.y[1])+1);
 			imageData.data.set(new Uint8ClampedArray(data.data));
 			writers[data.layer].putImageData(imageData, data.bounds.x[0], data.bounds.y[0]);
-			c.log(data.bounds);
 			writers.uiCache.clearRect(data.bounds.x[0], data.bounds.y[0], Math.abs(data.bounds.x[0]-data.bounds.x[1])+1, Math.abs(data.bounds.y[0]-data.bounds.y[1])+1);
 		},
 	};

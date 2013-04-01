@@ -79,6 +79,10 @@ miscellaneousUtilities.init = function(globalObject, targetObject) {
 		};
 	};
 	
+	t.duplicateBoundingBox = function(oldBox) {
+		return t.getBoundingBox({x:[oldBox.x1, oldBox.x2], y:[oldBox.y1, oldBox.y2]});
+	};
+	
 	t.croppedImage = function(largeImage, boundingBox) { //Only for RGBA images. Have a look at moveLayerData for shifting around multichannel image data.
 		return largeImage.getImageData(boundingBox.x, boundingBox.y, boundingBox.width, boundingBox.height);
 	};
@@ -217,7 +221,7 @@ miscellaneousUtilities.init = function(globalObject, targetObject) {
 	};
 	
 	var sizeIncreaseStep = 100;
-	t.aCeil = function(num, step) { //Returns the next multiple of sizeIncreaseStep away from 0. (Behaves like the Anura % operator.)
+	t.aCeil = function(num, step) { //A "sign-agnostic ceiling function". Returns the next multiple of sizeIncreaseStep away from 0. (Behaves like the Anura % operator.)
 		step = step || sizeIncreaseStep;
 		if(!(num%step)) return num; //No change needed. (0 remains unchanged.) Will pass bad values like NaN or ±Infinity, though.
 		//if(!num) return num; //No change for 0;
@@ -231,16 +235,25 @@ miscellaneousUtilities.init = function(globalObject, targetObject) {
 	};
 	
 	t.sizeLayer = function(layer, box) {
-		var x1Exp = t.aCeil(Math.min(0, box.x1 - layer.x1)); //x1Exp = Left side expansion required to make box fit in layer. Will be a negative number, since it only needs to go left-er.
-		var y1Exp = t.aCeil(Math.min(0, box.y1 - layer.y1));
-		var x2Exp = t.aCeil(-Math.min(0, layer.x2 - box.x2));
-		var y2Exp = t.aCeil(-Math.min(0, layer.y2 - box.y2));
+		var x1Exp = Math.min(0, box.x1 - layer.x1); //x1Exp = Left side expansion required to make box fit in layer. Will be a negative number, since it only needs to go left-er.
+		var y1Exp = Math.min(0, box.y1 - layer.y1);
+		var x2Exp = -Math.min(0, layer.x2 - box.x2);
+		var y2Exp = -Math.min(0, layer.y2 - box.y2);
 		c.log('recommended expansion xyxy: ', !!x1Exp||!!y1Exp||!!x2Exp||!!y2Exp);
 		if(x1Exp||y1Exp||x2Exp||y2Exp) {
-			var resizedLayer = _.clone(layer);
-			
+			//c.log('layer 1.1', layer);
+			var resizedLayer = t.duplicateBoundingBox(layer);
+			_.defaults(resizedLayer, layer);
+			resizedLayer.x1 = t.aCeil(resizedLayer.x1 + x1Exp);
+			resizedLayer.y1 = t.aCeil(resizedLayer.y1 + y1Exp);
+			resizedLayer.x2 = t.aCeil(resizedLayer.x2 + x2Exp) - 1; //OK, this is I think needed because 0 overlaps in the aCeil math when we expand negatively. Since we expand in 512-pixel incrementns, we should ensure that we do not exceed by one and make a 516-pixel wide image, because I think that'd do bad things to some optimization somewhere. Waste of space, and all. At any rate, the -1 makes the math correct here (I measured) for round numbers of pixels. :) This is pure 'gut feeling', unfortunantly, since I don't know a way to directly profile this.
+			resizedLayer.y2 = t.aCeil(resizedLayer.y2 + y2Exp) - 1;
 			resizedLayer.buffer = t.newBuffer(resizedLayer.width, resizedLayer.height, resizedLayer.channels);
+			t.moveLayerData(layer, resizedLayer, {area: layer});
+			//c.log('layer 2.1', resizedLayer);
+			//c.log('layer 1.2', layer);
 			_.extend(layer, resizedLayer);
+			//c.log('layer 1.3', layer);
 		}
 	};
 	
@@ -249,7 +262,7 @@ miscellaneousUtilities.init = function(globalObject, targetObject) {
 		    newLayer: The new layer of data to copy to. (May actually be the
 		      same as oldLayer.)
 		    options: (map)
-		      oldOrigin.x/y and/or newOrigin.x/y is required. This specifies the
+		      oldOrigin.x/y and newOrigin.x/y are optional. They specify the
 		        origin point for the rectange being copied from the old layer
 		        to the new layer, on their respective layers. Will default to
 		        area.x/y if not supplied, or the layer x/y if area not supplied.
@@ -264,17 +277,22 @@ miscellaneousUtilities.init = function(globalObject, targetObject) {
 		        This is an inclusive measurement, like a boundingBox.
 		      height (optional) is height of the area to copy. Inclusive.
 		*/
-		var oldBaseX = options.oldOrigin.x || oldLayer.x;  newBaseX = options.newOrigin.x || newLayer.x;
-		var oldBaseY = options.oldOrigin.y || oldLayer.y;  newBaseY = options.newOrigin.y || newLayer.y;  
-		var oldChans = oldLayer.channels;                  newChans = newLayer.channels;  
+		var oldBaseX = options.oldOrigin ? options.oldOrigin.x : oldLayer.x,  newBaseX = options.newOrigin ? options.newOrigin.x : newLayer.x;
+		var oldBaseY = options.oldOrigin ? options.oldOrigin.y : oldLayer.y,  newBaseY = options.newOrigin ? options.newOrigin.y : newLayer.y;  
+		var oldChans = oldLayer.channels,                                     newChans = newLayer.channels;  
 		var channels = options.channels    || _.range(Math.min(oldChans, newChans));
 		var width    = options.width       || options.area.width;
 		var height   = options.height      || options.area.height;
 		
+		var oldOffsetX = -oldLayer.x,                                         newOffsetX = -newLayer.x;
+		var oldOffsetY = -oldLayer.y,                                         newOffsetY = -newLayer.y;
+		
 		//TODO: Clip the copy rectangle so that it fits inside the read and write layers.
 		
 		if(oldBaseX===0 && newBaseX===0 && width===oldLayer.width && width===newLayer.width) { //We want to copy full lines into full lines. This means we don't have to skip bits, but can copy the entire section in one go.
-			console.log('hi');
+			c.log('moveLayerData: Block copy!');
+		} else {
+			c.log("moveLayerData: Line copy.");
 		}
 	};
 };

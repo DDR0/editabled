@@ -23,6 +23,7 @@
  * Copyright 2011 by David Flanagan
  * http://creativecommons.org/licenses/by-nc-sa/3.0/
  */
+ 
 if (this.console && this.console.log) {
     /* 
      * If there is already a console.log() function defined, then wrap the
@@ -49,7 +50,7 @@ if (this.console && this.console.log) {
         // And listen for log messages on the other end of the channel
         channel.port1.onmessage = function(e) {
             var args = e.data;                // Array of args to console.log()
-            args.unshift(url + ": ");         // Add an arg to id the worker
+            //args.unshift(url + ":");         // Add an arg to id the worker
             console.log.apply(console, args); // Pass the args to the real log
         }
 
@@ -75,6 +76,8 @@ else {
                 log: function log() {        // Define console.log()
                     // Copy the arguments into a real array
                     var args = Array.prototype.slice.call(arguments);
+                    var errorLine = ((new Error()).stack.split('\n')[2].trim().split(' '));
+                    args = [errorLine[1].substring(7)+' (~/'+errorLine[2].split('/').slice(3).reduce(function(a,b) {return a+'/'+b;}) + '\n'].concat(args);
                     // Send the arguments as a message, over our side channel
                     console._port.postMessage(args);
                 }
