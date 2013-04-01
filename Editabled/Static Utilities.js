@@ -239,15 +239,15 @@ miscellaneousUtilities.init = function(globalObject, targetObject) {
 		var y1Exp = Math.min(0, box.y1 - layer.y1);
 		var x2Exp = -Math.min(0, layer.x2 - box.x2);
 		var y2Exp = -Math.min(0, layer.y2 - box.y2);
-		c.log('recommended expansion xyxy: ', !!x1Exp||!!y1Exp||!!x2Exp||!!y2Exp);
+		//c.log('recommended expansion xyxy: ', !!x1Exp||!!y1Exp||!!x2Exp||!!y2Exp);
 		if(x1Exp||y1Exp||x2Exp||y2Exp) {
 			//c.log('layer 1.1', layer);
 			var resizedLayer = t.duplicateBoundingBox(layer);
 			_.defaults(resizedLayer, layer);
-			resizedLayer.x1 = t.aCeil(resizedLayer.x1 + x1Exp);
-			resizedLayer.y1 = t.aCeil(resizedLayer.y1 + y1Exp);
-			resizedLayer.x2 = t.aCeil(resizedLayer.x2 + x2Exp) - 1; //OK, this is I think needed because 0 overlaps in the aCeil math when we expand negatively. Since we expand in 512-pixel incrementns, we should ensure that we do not exceed by one and make a 516-pixel wide image, because I think that'd do bad things to some optimization somewhere. Waste of space, and all. At any rate, the -1 makes the math correct here (I measured) for round numbers of pixels. :) This is pure 'gut feeling', unfortunantly, since I don't know a way to directly profile this.
-			resizedLayer.y2 = t.aCeil(resizedLayer.y2 + y2Exp) - 1;
+			if(x1Exp) resizedLayer.x1 = t.aCeil(resizedLayer.x1 + x1Exp - 1);
+			if(y1Exp) resizedLayer.y1 = t.aCeil(resizedLayer.y1 + y1Exp - 1);
+			if(x2Exp) resizedLayer.x2 = t.aCeil(resizedLayer.x2 + x2Exp + 1) - 1; //OK, this is I think needed because 0 overlaps in the aCeil math when we expand negatively. Since we expand in 512-pixel incrementns, we should ensure that we do not exceed by one and make a 516-pixel wide image, because I think that'd do bad things to some optimization somewhere. Waste of space, and all. At any rate, the -1 makes the math correct here (I measured) for round numbers of pixels. :) This is pure 'gut feeling', unfortunantly, since I don't know a way to directly profile this.
+			if(y2Exp) resizedLayer.y2 = t.aCeil(resizedLayer.y2 + y2Exp + 1) - 1; //The if statements keep the -1s from being applied if there is no change, if the layer has been initialized juuuust wrong, ie, equal to t.aCeil(resizedLayer.y2 + y2Exp).
 			resizedLayer.buffer = t.newBuffer(resizedLayer.width, resizedLayer.height, resizedLayer.channels);
 			t.moveLayerData(layer, resizedLayer, {area: layer});
 			//c.log('layer 2.1', resizedLayer);
@@ -280,19 +280,42 @@ miscellaneousUtilities.init = function(globalObject, targetObject) {
 		var oldBaseX = options.oldOrigin ? options.oldOrigin.x : oldLayer.x,  newBaseX = options.newOrigin ? options.newOrigin.x : newLayer.x;
 		var oldBaseY = options.oldOrigin ? options.oldOrigin.y : oldLayer.y,  newBaseY = options.newOrigin ? options.newOrigin.y : newLayer.y;  
 		var oldChans = oldLayer.channels,                                     newChans = newLayer.channels;  
-		var channels = options.channels    || _.range(Math.min(oldChans, newChans));
+		var defaultChannels = _.range(Math.min(oldChans, newChans));
+		var channels = options.channels    || defaultChannels;
 		var width    = options.width       || options.area.width;
 		var height   = options.height      || options.area.height;
 		
 		var oldOffsetX = -oldLayer.x,                                         newOffsetX = -newLayer.x;
 		var oldOffsetY = -oldLayer.y,                                         newOffsetY = -newLayer.y;
+		var oldArray = new Uint8ClampedArray(oldLayer.buffer),                newArray = new Uint8ClampedArray(newLayer.buffer);
 		
 		//TODO: Clip the copy rectangle so that it fits inside the read and write layers.
 		
-		if(oldBaseX===0 && newBaseX===0 && width===oldLayer.width && width===newLayer.width) { //We want to copy full lines into full lines. This means we don't have to skip bits, but can copy the entire section in one go.
-			c.log('moveLayerData: Block copy!');
-		} else {
-			c.log("moveLayerData: Line copy.");
+		var oldBlockStart, newBlockStart, blockLength;
+		if(oldBaseX===0 && newBaseX===0 && width===oldLayer.width && width===newLayer.width && oldLayer.channels===newLayer.channels && _.isEqual(channels, defaultChannels) ) { //We want to copy full lines into full lines. This means we don't have to skip spaces (columns), but can copy the entire contiguous section in one go.
+			c.log('Block copy!');
+			//TODO: oldBlockStart & oldBlockStart are UNVERIFIED correct for non-0 values.
+			oldBlockStart = (oldOffsetX+(oldBaseY+oldOffsetY)*width)*channels.length;
+			newBlockStart = (newOffsetX+(newBaseY+newOffsetY)*width)*channels.length;
+			blockLength = width*height*channels.length;
+			newArray.set(oldArray.subarray(oldBlockStart, oldBlockStart+blockLength), newBlockStart);
+		} else if(oldLayer.channels===newLayer.channels && _.isEqual(channels, defaultChannels) ) { //Even though we have to stop copying to avoid overwriting some columns, each line of data we want to copy is still contiguous, and we can copy that.
+			c.log("Line copy.");
+			blockLength = width*channels.length;
+			for (var line = 0; line < height; line++) {
+				oldBlockStart = (
+					(oldOffsetY + oldBaseY + line) * oldLayer.width + //Y offset, including line.
+					oldOffsetX + oldBaseX) *                          //X offset
+					channels.length;                                  //Size of a pixel, in Uint8s.
+				newBlockStart = (
+					(newOffsetY + newBaseY + line) * newLayer.width +
+					newOffsetX + newBaseX) *
+					channels.length;
+				newArray.set(oldArray.subarray(oldBlockStart, oldBlockStart+blockLength), newBlockStart);
+			}
+		} else { //There are no optimizations we can apply. Since an individual pixel's data either isn't contiguous or isn't consistent between source and destination, it can't be directly copied. Since we can't copy pixels, we can't copy blocks but must copy each and every channel over manually.
+			c.log("Channel copy.");
+			c.log("ERROR: Copying individual channel data isn't supported yet. (There was no test case atm.)");
 		}
 	};
 };

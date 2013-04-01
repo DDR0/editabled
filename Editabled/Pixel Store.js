@@ -34,7 +34,7 @@ miscellaneousUtilities.init(self, self.cUtils = {});
 
 
 var wCounter = 0;
-var newLayerWindow = function(cmd) {
+var newLayerWindow = function(cmd) { //Note: These layer objects are usable as bounding boxes.
 	if(!cmd.width || !cmd.height) c.error('The pixel store tried to create a newLayerWindow with a width/height of ' + cmd.width + '/' + cmd.height + '.');
 	cmd = cmd || {};
 	cmd.x = cmd.x || 0; cmd.y = cmd.y || 0;
@@ -67,8 +67,8 @@ var newLayerCanvas = function(cmd) {
 	cmd = cmd || {};
 	cmd.x = cmd.x || 0; cmd.y = cmd.y || 0;
 	_.extend(cmd, cUtils.getBoundingBox({
-		x:[cmd.x||0, (cmd.x||0)+cmd.width],
-		y:[cmd.y||0, (cmd.y||0)+cmd.height]
+		x:[cmd.x||0, (cmd.x||0)+cmd.width-1],
+		y:[cmd.y||0, (cmd.y||0)+cmd.height-1]
 	}));
 	cmd.type = 'canvas';
 	cmd.name = cmd.name || 'Canvas #'+(++cCounter);
