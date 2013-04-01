@@ -1,3 +1,4 @@
+/*jshint -W018 */
 /*global _, c*/
 var miscellaneousUtilities = {}; //These are more… functional functions, if that makes any sense. They're used by both the Pixel Store worker and the normal UI js.
 miscellaneousUtilities.init = function(globalObject, targetObject) {
@@ -78,7 +79,7 @@ miscellaneousUtilities.init = function(globalObject, targetObject) {
 		};
 	};
 	
-	t.croppedImage = function(largeImage, boundingBox) {
+	t.croppedImage = function(largeImage, boundingBox) { //Only for RGBA images. Have a look at moveLayerData for shifting around multichannel image data.
 		return largeImage.getImageData(boundingBox.x, boundingBox.y, boundingBox.width, boundingBox.height);
 	};
 	
@@ -101,17 +102,17 @@ miscellaneousUtilities.init = function(globalObject, targetObject) {
 			throw "[ILH48] options.bufferWidth isn't valid (" + options.bufferWidth + ")";
 		}
 		
-		var rangeX = _.range(options.area.x1, options.area.x2+1);
-		var rangeY = _.range(options.area.y1, options.area.y2+1);
-		rangeX.map(function(oldx, newx) { //TODO: Convert to for loops for additional speed.
-			rangeY.map(function(oldy, newy) {
-				depthOut.map(function(newChan, oldChan) {
-					if(isFinite(newChan)) {
-						returnUintArray[(newy*width+newx)*depthOut.length+newChan] = oldUint8Arrays[(oldy*bufferWidth+oldx)*depthIn+oldChan];
-					}
-				});
-			});
-		});
+		var copyChans = function(newChan, oldChan) {
+			if(isFinite(newChan)) {
+				returnUintArray[(newy*width+newx)*depthOut.length+newChan] = oldUint8Arrays[(oldy*bufferWidth+oldx)*depthIn+oldChan];
+			}
+		};
+		
+		for (var oldx = options.area.x1, newx = 0; oldx <= options.area.x2; oldx++, newx++) {
+			for (var oldy = options.area.y1, newy = 0; oldy <= options.area.y2; oldy++, newy++) {
+				depthOut.map(copyChans);
+			}
+		}
 		
 		return imageToReturn;
 	};
@@ -127,11 +128,12 @@ miscellaneousUtilities.init = function(globalObject, targetObject) {
 	t.setAll = function(cmd) {
 		cmd.chan = cmd.chan || 4;
 		var pixels = cmd.data.length/cmd.chan;
-		_.range(pixels).map(function(index) {
-			_.range(cmd.chan).map(function(channel) {
+		index = 0;
+		for (var index = 0; index < pixels; index++) {
+			for (var channel = 0; channel < cmd.chan; channel++) {
 				if(isFinite(cmd[channel])) cmd.data[index*cmd.chan+channel] = cmd[channel];
-			});
-		});
+			}
+		}
 	};
 	
 	t.setPixels = function(cmd) { //cmd.data should be a uint8 list. cmd.x/y: A list of x values and a corresponding list of y values to plot points at. drawUpdateRect is an optional arg, for use if you'd like to see the rectangle that was used when drawing the line. (For debug use only.)
@@ -183,6 +185,10 @@ miscellaneousUtilities.init = function(globalObject, targetObject) {
 		t.setPixels(cmd);
 	};
 	
+	t.newBuffer = function (width, height, depth) {
+		return new ArrayBuffer(((width)*(height))*(depth)); //plus whuuut?
+	};
+	
 	
 	/* LAYER FUNCTION */
 	
@@ -210,23 +216,72 @@ miscellaneousUtilities.init = function(globalObject, targetObject) {
 		return layer;
 	};
 	
+	var sizeIncreaseStep = 100;
+	t.aCeil = function(num, step) { //Returns the next multiple of sizeIncreaseStep away from 0. (Behaves like the Anura % operator.)
+		step = step || sizeIncreaseStep;
+		if(!(num%step)) return num; //No change needed. (0 remains unchanged.) Will pass bad values like NaN or ±Infinity, though.
+		//if(!num) return num; //No change for 0;
+		var negative = num < 0 ? -1 : 1;
+		num = Math.abs(num);
+		num = (Math.floor(num/step)+1)*step;
+		return negative * num;
+	};
+	t.aFloor = function(num, step) {
+		return t.aCeil(num, -step);
+	};
 	
 	t.sizeLayer = function(layer, box) {
-/*		c.log(layer, box);
-		var x1Exp = Math.min(0, box.x1 - layer.x); //x1Exp = Left side expansion required to make box fit in layer. Will be a negative number, since it only needs to go left-er.
-		var y1Exp = Math.min(0, box.y1 - layer.y);
-		var x2Exp = Math.min(0, box.x1 - layer.x);
-		var y2Exp = Math.min(0, box.x1 - layer.x);
-		//Math.floor((45+512)/512)*/
+		var x1Exp = t.aCeil(Math.min(0, box.x1 - layer.x1)); //x1Exp = Left side expansion required to make box fit in layer. Will be a negative number, since it only needs to go left-er.
+		var y1Exp = t.aCeil(Math.min(0, box.y1 - layer.y1));
+		var x2Exp = t.aCeil(-Math.min(0, layer.x2 - box.x2));
+		var y2Exp = t.aCeil(-Math.min(0, layer.y2 - box.y2));
+		c.log('recommended expansion xyxy: ', !!x1Exp||!!y1Exp||!!x2Exp||!!y2Exp);
+		if(x1Exp||y1Exp||x2Exp||y2Exp) {
+			var resizedLayer = _.clone(layer);
+			
+			resizedLayer.buffer = t.newBuffer(resizedLayer.width, resizedLayer.height, resizedLayer.channels);
+			_.extend(layer, resizedLayer);
+		}
+	};
+	
+	t.moveLayerData = function(oldLayer, newLayer, options) {
+		/*  oldLayer: The old layer of data to copy from. (type "layerCanvas")
+		    newLayer: The new layer of data to copy to. (May actually be the
+		      same as oldLayer.)
+		    options: (map)
+		      oldOrigin.x/y and/or newOrigin.x/y is required. This specifies the
+		        origin point for the rectange being copied from the old layer
+		        to the new layer, on their respective layers. Will default to
+		        area.x/y if not supplied, or the layer x/y if area not supplied.
+		      channels (optional) specifies the mapping of the channels from old
+		        to new. This works like convertBuffer's outputChannels option.
+		        Basically, key is old channel, value is new channel. Works with
+		        lists or maps. An undefined value means to ignore the channel.
+		      area: A bounding box, telling what to move. Optional if
+		        oldOrigin.x/y, newOrigin.x/y, width, and height and height are
+		        defined.
+		      width (optional) is the width of the square area to copy.
+		        This is an inclusive measurement, like a boundingBox.
+		      height (optional) is height of the area to copy. Inclusive.
+		*/
+		var oldBaseX = options.oldOrigin.x || oldLayer.x;  newBaseX = options.newOrigin.x || newLayer.x;
+		var oldBaseY = options.oldOrigin.y || oldLayer.y;  newBaseY = options.newOrigin.y || newLayer.y;  
+		var oldChans = oldLayer.channels;                  newChans = newLayer.channels;  
+		var channels = options.channels    || _.range(Math.min(oldChans, newChans));
+		var width    = options.width       || options.area.width;
+		var height   = options.height      || options.area.height;
+		
+		//TODO: Clip the copy rectangle so that it fits inside the read and write layers.
+		
+		if(oldBaseX===0 && newBaseX===0 && width===oldLayer.width && width===newLayer.width) { //We want to copy full lines into full lines. This means we don't have to skip bits, but can copy the entire section in one go.
+			console.log('hi');
+		}
 	};
 };
 
-/* OLD:
-eu = editors.utils; gi = glob.imageTree;
-gi = glob.newLayerWindow({});
-eu.insertLayer(gi, [0,0], glob.newLayerFolder({}));
-gi;
-*//* NEW:
+
+
+/* NEW:
 eu = editors.utils; gi = glob.imageTree;
 eu.insertLayer(gi, [0], glob.newLayerFolder({}));
 gi;

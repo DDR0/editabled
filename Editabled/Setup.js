@@ -1,6 +1,6 @@
 /*global _, $, jQuery, console, c, editors, miscellaneousUtilities*/
 
-var glob; //A global variable, for debugging in the console.
+var glob, cu, eu; //A global variable, for debugging in the console. cu and eu are a canvasUtils and editors.utils (static utilities).
 //Note: Static utils are init'd in utilities.js.
 
 editors.map(function(index) {
@@ -37,13 +37,14 @@ editors.map(function(index) {
 	canvasDOM.css({'width': canvas.width+'px', 'height': canvas.height+'px',});
 	
 	utils.layer({'command': 'initializeLayerTree', 'data': {
-		'width': 200,//canvas.width,
-		'height': 300,//canvas.height,
+		'width': 300,//canvas.width,
+		'height': 200,//canvas.height,
 		'name': 'main',
 	}});
 	//c.log(utils.tagStr('|'), utils.imageTree);
 	
-	glob = utils;
+	cu = utils;
+	eu = editors.utils;
 		
 	var writers = edLib.writers = {}; //We'll write the buffered output of the pixel store to two layers, overlay and underlay. Underlay will contain the RGBA render of the active layer, and any layers below. Overlay, will contain the RGBA render of the remaining layers. These will blend together using whatever method the browser uses for compositing. ui will be where the tool itself is rendered as it's being used. uiGhost is where the ghost of the tool renders, *if* the overlay pixel isn't totally transparent. This is because, since we've got a layered image, the tool should appear *in* the layer it's working on, and hence underneath any layers on top of it.
 	

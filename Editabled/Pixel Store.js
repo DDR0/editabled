@@ -18,7 +18,7 @@ if(typeof console === 'undefined') {
 			error: logger
 		};
 	} else { //Firefox, because Chrome doesn't support self.dump().
-		logger = function(text) {self.dump('ps: '+text+'\n');};
+		logger = function dumper() {self.dump('ps: ' + _.reduce(arguments, function(a,b,s,l) {return a+b+(s+1!==l.length?", ":".");}) + '\n');};
 		c = {
 			log: logger,
 			warn: logger,
@@ -29,6 +29,7 @@ if(typeof console === 'undefined') {
 	c = console;
 }
 
+
 miscellaneousUtilities.init(self, self.cUtils = {});
 
 
@@ -37,41 +38,44 @@ var newLayerWindow = function(cmd) {
 	if(!cmd.width || !cmd.height) c.error('The pixel store tried to create a newLayerWindow with a width/height of ' + cmd.width + '/' + cmd.height + '.');
 	cmd = cmd || {};
 	cmd.x = cmd.x || 0; cmd.y = cmd.y || 0;
-	cmd.type = 'window';
-	cmd.name = cmd.name || 'Window #'+(++wCounter);
-	cmd.layers = [];
-	return _.extend(cmd, cUtils.getBoundingBox({
+	_.extend(cmd, cUtils.getBoundingBox({
 		x:[cmd.x||0, (cmd.x||0)+cmd.width],
 		y:[cmd.y||0, (cmd.y||0)+cmd.height]
 	}));
+	cmd.type = 'window';
+	cmd.name = cmd.name || 'Window #'+(++wCounter);
+	cmd.layers = [];
+	return cmd;
 };
 
 var fCounter = 0;
 var newLayerFolder = function(cmd) {
 	cmd = cmd || {};
 	cmd.x = cmd.x || 0; cmd.y = cmd.y || 0;
-	cmd.type = 'folder';
-	cmd.name = cmd.name || 'Folder #'+(++fCounter);
-	cmd.layers = [];
-	return _.extend(cmd, cUtils.getBoundingBox({
+	_.extend(cmd, cUtils.getBoundingBox({
 		x:[cmd.x||0, (cmd.x||0)+cmd.width],
 		y:[cmd.y||0, (cmd.y||0)+cmd.height]
 	}));
+	cmd.type = 'folder';
+	cmd.name = cmd.name || 'Folder #'+(++fCounter);
+	cmd.layers = [];
+	return cmd;
 };
 
 var cCounter = 0;
 var newLayerCanvas = function(cmd) {
 	cmd = cmd || {};
 	cmd.x = cmd.x || 0; cmd.y = cmd.y || 0;
-	cmd.type = 'canvas';
-	cmd.name = cmd.name || 'Canvas #'+(++cCounter);
-	cmd.channels = cmd.channels || 8; //Uint8 rgba ∑ 4, Uint32 tool# = 4
-	cmd.buffer = new ArrayBuffer((cmd.width*cmd.height)*(cmd.channels || 4));
-	cmd.exteriorColour = [128,,,255]; //This is what is returned when we render *outside* the layer.
-	return _.extend(cmd, cUtils.getBoundingBox({
+	_.extend(cmd, cUtils.getBoundingBox({
 		x:[cmd.x||0, (cmd.x||0)+cmd.width],
 		y:[cmd.y||0, (cmd.y||0)+cmd.height]
 	}));
+	cmd.type = 'canvas';
+	cmd.name = cmd.name || 'Canvas #'+(++cCounter);
+	cmd.channels = cmd.channels || 8; //Uint8 rgba ∑ 4, Uint32 tool# = 4
+	cmd.buffer = cUtils.newBuffer(cmd.width, cmd.height, cmd.channels);
+	cmd.exteriorColour = [128,,,255]; //This is what is returned when we render *outside* the layer.
+	return cmd;
 };
 
 var addToImageTree = function(obj, path) { //TODO: Path is a list of indexes specifying where to add the new layer. Layer must be a type 'folder' to be subpathable. For example, the path [3,0,5] would mean, 'in the third folder from the top, in the top folder, the fifth element down is now obj and the old fifth element is now the sixth element.'
@@ -129,8 +133,7 @@ var onForcefill = function(data) {
 	var layer = cUtils.getLayer(imageTree, data.tool.layer);
 	var canvas = cUtils.getLayer(imageTree, []);
 	cUtils.setAll(_.defaults({data: new Uint8ClampedArray(layer.buffer)}, data.tool.colour));
-	var boundingBox = cUtils.getBoundingBox({x:[canvas.x, canvas.x + canvas.width], y:[canvas.y, canvas.y + canvas.height]});
-	sendUpdate([0], boundingBox);
+	sendUpdate([0], layer);
 	c.log(data.tool);
 };
 
