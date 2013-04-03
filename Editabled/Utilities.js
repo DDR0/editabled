@@ -72,14 +72,18 @@ editors.map(function(index) {
 	};
 	
 	var wCounter = 0;
-	utils.newLayerWindow = function(cmd) { //width/height, optional name
-		return {
+	utils.newLayerWindow = function(cmd) { //This is the only layer structure with a width/height, because we need to do a bit of path-tracing to figure out where to send the mouse-clicks. For now.
+		var newWin = {
 			type: 'window',
 			name: cmd.name || 'Window #'+(++wCounter),
 			width: cmd.width,
 			height: cmd.height,
 			layers: cmd.layers || [],
 		};
+		return _.extend(newWin, cUtils.getBoundingBox({
+			x:[cmd.x||0, (cmd.x||0)+cmd.width],
+			y:[cmd.y||0, (cmd.y||0)+cmd.height]
+		}));
 	};
 	
 	var fCounter = 0;

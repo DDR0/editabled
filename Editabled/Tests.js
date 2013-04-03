@@ -3,7 +3,7 @@ editors.map(function(index) {
 	var canvas = editors[index];
 	var pxStore = canvas.edLib.pxStore;
 	var utils = canvas.edLib.utils;
-	var sUtils = editors.utils; //Static Common Utils
+	var cUtils = editors.utils; //Static Common Utils
 	var writers = canvas.edLib.writers;
 	var ui = canvas.edLib.ui;
 	
@@ -16,7 +16,7 @@ editors.map(function(index) {
 		};
 		
 		pxStore.addEventListener('message', function(event) {
-			var cmd = sUtils.eventNameFromCommand('on', event);
+			var cmd = cUtils.eventNameFromCommand('on', event);
 			if(typeof handlers[cmd] === 'function') {
 				handlers[cmd](event.data); return;
 			}
@@ -153,12 +153,39 @@ editors.map(function(index) {
 	
 	
 	
+	var drawCorners = function(path_to_window, path_to_layer) {
+		var headSize = 6;
+		var shaftSize = 3;
+		
+		var win = cUtils.getLayer(utils.imageTree, path_to_window);
+		ui.setActiveLayer(path_to_layer);
+		
+		//corner 1
+		ui.drawLine({'to':'uiCache', 'points': {x:[0,0,headSize], y:[win.height-2-headSize,win.height-2,win.height-2]}});
+		ui.drawLine({'to':'uiCache', 'points': {x:[0,shaftSize], y:[win.height-2,win.height-2-shaftSize]}});
+		
+		//corner 3
+		ui.drawLine({'to':'uiCache', 'points': {x:[win.width-2,win.width-2, win.width-2-headSize], y:[win.height-2-headSize,win.height-2,win.height-2]}});
+		ui.drawLine({'to':'uiCache', 'points': {x:[win.width-2,win.width-2-shaftSize], y:[win.height-2,win.height-2-shaftSize]}});
+		
+		//corner 7
+		ui.drawLine({'to':'uiCache', 'points': {x:[0,0,headSize], y:[headSize,0,0]}});
+		ui.drawLine({'to':'uiCache', 'points': {x:[0,shaftSize], y:[0,shaftSize]}});
+		
+		//corner 9
+		ui.drawLine({'to':'uiCache', 'points': {x:[win.width-2,win.width-2, win.width-2-headSize], y:[headSize,0,0]}});
+		ui.drawLine({'to':'uiCache', 'points': {x:[win.width-2,win.width-2-shaftSize], y:[0,shaftSize]}});
+	};
+	
+	
+	
 	// ------------------------------
 	
 	
 	
 	pingWorker();
-	floodCanvas('underlay');
+	//floodCanvas('underlay');
 	drawingTests();
-	//drawingTests(['\\']);
+	drawingTests(['\\']);
+	drawCorners([], [0]);
 });

@@ -15,7 +15,7 @@ editors.map(function(index) {
 		
 	};
 	
-	var drawLine = function(data) {
+	ui.drawLine = function(data) {
 		if(data.to !== 'ui' && data.to !== undefined) {
 			pxStore.postMessage({
 				'command': 'drawLine',
@@ -48,24 +48,24 @@ editors.map(function(index) {
 	};
 	
 	ui.draw = function() {  //For the tests. They call ui.draw, and don't specify the .to property.
-		arguments[0].to = 'underlay';
-		drawLine.apply(this, arguments);
+		arguments[0].to = 'uiCache';
+		ui.drawLine.apply(this, arguments);
 	};
 	
 	ui.pencilLeftStart = function(event) {
-		drawLine({'to':'uiCache', 'points': {x:[event.x], y:[event.y]}}); //Down has no access to the old position. You can only be down in one place, right?
+		ui.drawLine({'to':'uiCache', 'points': {x:[event.x], y:[event.y]}}); //Down has no access to the old position. You can only be down in one place, right?
 	};
 	
 	ui.pencilLeftContinue = function(event) {
-		drawLine({'to':'uiCache', 'points': {x:[event.x, event.oldX], y:[event.y, event.oldY]}});
+		ui.drawLine({'to':'uiCache', 'points': {x:[event.x, event.oldX], y:[event.y, event.oldY]}});
 	};
 	
 	ui.pencilAddPreview = function(event) {
-		drawLine({'points': {x:[event.x], y:[event.y]}});
+		ui.drawLine({'points': {x:[event.x], y:[event.y]}});
 	};
 	
 	ui.pencilRemovePreview = function(event) {
-		drawLine({'points': {x:[event.oldX], y:[event.oldY]}, 'colour': [,,,0]});
+		ui.drawLine({'points': {x:[event.oldX], y:[event.oldY]}, 'colour': [,,,0]});
 	};
 	
 	
@@ -100,6 +100,9 @@ editors.map(function(index) {
 			data: {tool:_.defaults({colour:{2:128,3:255}}, ui.tool)},
 		});
 	};
+	
+	
+	ui.setActiveLayer = function(layer) {ui.tool.layer = layer;};
 	
 	
 	ui.selectPencil = function() {ui.tool.type = 'pencil';};

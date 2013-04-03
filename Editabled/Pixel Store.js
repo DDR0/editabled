@@ -37,7 +37,6 @@ var wCounter = 0;
 var newLayerWindow = function(cmd) { //Note: These layer objects are usable as bounding boxes.
 	if(!cmd.width || !cmd.height) c.error('The pixel store tried to create a newLayerWindow with a width/height of ' + cmd.width + '/' + cmd.height + '.');
 	cmd = cmd || {};
-	cmd.x = cmd.x || 0; cmd.y = cmd.y || 0;
 	_.extend(cmd, cUtils.getBoundingBox({
 		x:[cmd.x||0, (cmd.x||0)+cmd.width],
 		y:[cmd.y||0, (cmd.y||0)+cmd.height]
@@ -51,7 +50,6 @@ var newLayerWindow = function(cmd) { //Note: These layer objects are usable as b
 var fCounter = 0;
 var newLayerFolder = function(cmd) {
 	cmd = cmd || {};
-	cmd.x = cmd.x || 0; cmd.y = cmd.y || 0;
 	_.extend(cmd, cUtils.getBoundingBox({
 		x:[cmd.x||0, (cmd.x||0)+cmd.width],
 		y:[cmd.y||0, (cmd.y||0)+cmd.height]
@@ -65,7 +63,6 @@ var newLayerFolder = function(cmd) {
 var cCounter = 0;
 var newLayerCanvas = function(cmd) {
 	cmd = cmd || {};
-	cmd.x = cmd.x || 0; cmd.y = cmd.y || 0;
 	_.extend(cmd, cUtils.getBoundingBox({
 		x:[cmd.x||0, (cmd.x||0)+cmd.width-1],
 		y:[cmd.y||0, (cmd.y||0)+cmd.height-1]
