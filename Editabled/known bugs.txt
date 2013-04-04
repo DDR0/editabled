@@ -1,4 +1,5 @@
 Ｋｎｏｗｎ Ｂｕｇｓ
 ‣ In Chromium, there in a fuzzy area at the top of the canvas where the mouse is still on the canvas, but it's not actually on it.
+‣ In Firefox, if you scroll to the bottom of the page the reported mouse x/y is offset by one.
 
 Ｆｉｘｅｄ Ｂｕｇｓ
