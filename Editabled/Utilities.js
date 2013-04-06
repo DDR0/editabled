@@ -48,10 +48,14 @@ editors.map(function(index) {
 	
 	
 	utils.layer = function(cmd) { //When passing a layer message to Pixel Store, pass it through this which will keep the near-side layer data in synch. We need to maintain two copies, since, assuming Pixel Store is in the middle of five minuites of doing *something*, we have no way of getting the data out of it. So, we duplicate!
-		edLib.pxStore.postMessage(cmd);
 		switch(cmd.command) {
 			case 'addLayer':
 				//utils.imageTree.push({type:'layer'});
+				c.error('todo: implement adding layer here');
+				break;
+			case 'setLayerData':
+				break;
+			case 'changeLayerData':
 				c.error('todo: implement adding layer here');
 				break;
 			case 'initializeLayerTree':
@@ -59,8 +63,11 @@ editors.map(function(index) {
 				cUtils.insertLayer(utils.imageTree, [0], utils.newLayerCanvas(cmd.data));
 				break;
 			default:
-				c.warn('Couldn\'t mirror a layer command.', cmd);
+				var err = new Error('Couldn\'t mirror a layer command.');
+				err.command = cmd;
+				throw err;
 		}
+		edLib.pxStore.postMessage(cmd);
 	};
 	
 	var newLayerThumbnail = function() {

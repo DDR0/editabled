@@ -1,10 +1,10 @@
 /* jshint worker: true, globalstrict: true, strict: false */
-/* global console, _, self, miscellaneousUtilities, cUtils, ArrayBuffer, DataView, Uint8Array, imageTree*/
+/* global console, _, self, miscellaneousUtilities, cUtils, ArrayBuffer, DataView, Uint8Array, imageTree, lData*/
 "use strict";
 
 //Side note: Due to the webworker environment, we often get debug output back without so much as a hint as to where it came from. For this reason, ID tags are scattered about, taking the form of [xxxxx]. To find a tag from the output, just do a multifile search for it.
 
-self.importScripts('Underscore 1.4.4.js', "Static Utilities.js"); //~/*.js on Chrome, ~/Editabled/*.js on Firefox. Fixed with soft filesystem link.
+self.importScripts('Underscore 1.4.4.js', "Static Utilities.js", "Layer Manipulation.js"); //~/*.js on Chrome, ~/Editabled/*.js on Firefox. Fixed with soft filesystem link.
 
 //Could import, but it's a bit of a pain. Comment out for final release.
 var c;
@@ -111,7 +111,7 @@ var onAddLayer = function(data) {
 var onDrawLine = function(data) { //Draw a number of pixels to the canvas.
 	var boundingBox = cUtils.getBoundingBox(data.points);
 	var layer = cUtils.getLayer(imageTree, data.tool.layer);
-	cUtils.sizeLayer(layer, boundingBox);
+	lData.sizeLayer(layer, boundingBox);
 	
 	var imageData = new Uint8ClampedArray(layer.buffer);
 	cUtils.setLine(_.defaults({'data':imageData, 'width':layer.width, 'chan':layer.channels}, data.points, data.tool.colour));
