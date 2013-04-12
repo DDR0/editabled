@@ -207,15 +207,6 @@ miscellaneousUtilities.init = function(globalObject, targetObject) {
 		}
 	};
 	
-	t.getLayerOffset = function(lobj, path) { //Returns the absolute X and Y of the layer.
-		return path.map(function(__, index) {
-			return t.getLayer(lobj, path.slice(0, index));
-		}).reduce(function(a,b) {
-			return {x:a.x+b.x, y:a.y+b.y};
-		});
-	};
-	//eu.getLayerOffset( cu.imageTree, [0,0])
-	
 	t.insertLayer = function(lobj, path, layer) { //Puts the layer in the layer stack at path.
 		var parentObj = t.getLayer(lobj, _.initial(path));
 		if(parentObj.type === 'canvas') throw {'message': "Tried to add layer inside a canvas layer.", 'layers': layers, 'path': path};

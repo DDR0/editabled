@@ -87,6 +87,12 @@ var addToImageTree = function(obj, path) { //TODO: Path is a list of indexes spe
 
 self.onmessage = function(event) {
 	var cmd = cUtils.eventNameFromCommand('on', event);
+	if(event.data && event.data.data && event.data.data.points && event.data.data.tool && event.data.data.tool.layer) {
+		var offset = lData.getLayerOffset(imageTree, event.data.data.tool.layer);
+		var points = event.data.data.points;
+		points.x = points.x.map(function(point) {return point-offset.x;});
+		points.y = points.y.map(function(point) {return point-offset.y;});
+	}
 	self[cmd]((delete event.data.data.command, event.data.data));
 };
 
@@ -99,7 +105,7 @@ var onPing = function() { //Fires off a simple message.
 var onInitializeLayerTree = function(data) {
 	self.imageTree = newLayerWindow(_.clone(data));
 	addToImageTree(newLayerCanvas(_.clone(data)), [0]);
-	c.log('new layer:', newLayerCanvas(_.clone(data)));
+	//c.log('new layer:', newLayerCanvas(_.clone(data)));
 };
 
 
@@ -138,10 +144,10 @@ var onForcefill = function(data) {
 // === End event handlers. ===
 
 
-var sendUpdate = function(layer, boundingBox) {
-	layer = cUtils.getLayer(imageTree, layer);
-	
-	//Update background.
+var sendUpdate = function(layerPath, boundingBox) {
+	var layer = cUtils.getLayer(imageTree, layerPath);
+	var offset = lData.getLayerOffset(imageTree, layerPath); //This function could use some more testing.
+	//Just update background for now.
 	var bufferToReturn = cUtils.convertBuffer(layer.buffer, {area:boundingBox, bufferWidth:layer.width, outputChannels:4, inputChannels:8});
 	var bLength = bufferToReturn.byteLength;
 	self.postMessage({
@@ -149,12 +155,13 @@ var sendUpdate = function(layer, boundingBox) {
 		'data': {
 			layer: 'underlay',
 			bounds: {
-				x:[boundingBox.x1, boundingBox.x2], 
-				y:[boundingBox.y1, boundingBox.y2]},
+				x:[offset.x+boundingBox.x1, offset.x+boundingBox.x2], 
+				y:[offset.y+boundingBox.y1, offset.y+boundingBox.y2]},
 			data: bufferToReturn,
 		},
 	}, [bufferToReturn]);
 	if(bLength === bufferToReturn.byteLength) { //If the buffer was copied, byteLength won't be readable anymore.
 		c.log("The return buffer was serialized! [#u1P7T]");
+		throw new Error("The return buffer was serialized! [#u1P7T]");
 	}
 };

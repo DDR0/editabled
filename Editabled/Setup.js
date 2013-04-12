@@ -39,6 +39,7 @@ editors.map(function(index) {
 	utils.layer({'command': 'initializeLayerTree', 'data': {
 		'width': 200,//canvas.width,
 		'height': 300,//canvas.height,
+		'x': 20, 'y': 10, //Testing.
 		'name': 'main',
 	}});
 	//c.log(utils.tagStr('|'), utils.imageTree);

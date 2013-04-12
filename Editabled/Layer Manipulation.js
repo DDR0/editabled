@@ -5,6 +5,15 @@ var lData = {};
 
 //These are impure functions for Pixel Store layer manipulation.
 
+lData.getLayerOffset = function(lobj, path) { //Returns the absolute X and Y of the layer, as an object with x and y keys.
+	return path.map(function(element, index) {
+		return cUtils.getLayer(lobj, path.slice(0, index));
+	}).reduce(function(a,b) {
+		return {x:a.x+b.x, y:a.y+b.y};
+	});
+};
+//eu.getLayerOffset( cu.imageTree, [0,0])
+
 lData.sizeLayer = function(layer, box) { //Resizes the layer so that the bounding box would fit in to it.
 	var x1Exp = Math.min(0, box.x1 - layer.x1); //x1Exp = Left side expansion required to make box fit in layer. Will be a negative number, since it only needs to go left-er.
 	var y1Exp = Math.min(0, box.y1 - layer.y1);
