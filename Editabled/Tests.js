@@ -161,20 +161,20 @@ editors.map(function(index) {
 		ui.setActiveLayer(path_to_layer);
 		
 		//corner 1
-		ui.drawLine({'to':'uiCache', 'points': {x:[0,0,headSize], y:[win.height-2-headSize,win.height-2,win.height-2]}});
-		ui.drawLine({'to':'uiCache', 'points': {x:[0,shaftSize], y:[win.height-2,win.height-2-shaftSize]}});
+		ui.draw({'to':'uiCache', 'points': {x:[0,0,headSize], y:[win.height-2-headSize,win.height-2,win.height-2]}});
+		ui.draw({'to':'uiCache', 'points': {x:[0,shaftSize], y:[win.height-2,win.height-2-shaftSize]}});
 		
 		//corner 3
-		ui.drawLine({'to':'uiCache', 'points': {x:[win.width-2,win.width-2, win.width-2-headSize], y:[win.height-2-headSize,win.height-2,win.height-2]}});
-		ui.drawLine({'to':'uiCache', 'points': {x:[win.width-2,win.width-2-shaftSize], y:[win.height-2,win.height-2-shaftSize]}});
+		ui.draw({'to':'uiCache', 'points': {x:[win.width-2,win.width-2, win.width-2-headSize], y:[win.height-2-headSize,win.height-2,win.height-2]}});
+		ui.draw({'to':'uiCache', 'points': {x:[win.width-2,win.width-2-shaftSize], y:[win.height-2,win.height-2-shaftSize]}});
 		
 		//corner 7
-		ui.drawLine({'to':'uiCache', 'points': {x:[0,0,headSize], y:[headSize,0,0]}});
-		ui.drawLine({'to':'uiCache', 'points': {x:[0,shaftSize], y:[0,shaftSize]}});
+		ui.draw({'to':'uiCache', 'points': {x:[0,0,headSize], y:[headSize,0,0]}});
+		ui.draw({'to':'uiCache', 'points': {x:[0,shaftSize], y:[0,shaftSize]}});
 		
 		//corner 9
-		ui.drawLine({'to':'uiCache', 'points': {x:[win.width-2,win.width-2, win.width-2-headSize], y:[headSize,0,0]}});
-		ui.drawLine({'to':'uiCache', 'points': {x:[win.width-2,win.width-2-shaftSize], y:[0,shaftSize]}});
+		ui.draw({'to':'uiCache', 'points': {x:[win.width-2,win.width-2, win.width-2-headSize], y:[headSize,0,0]}});
+		ui.draw({'to':'uiCache', 'points': {x:[win.width-2,win.width-2-shaftSize], y:[0,shaftSize]}});
 	};
 	
 	
@@ -186,6 +186,6 @@ editors.map(function(index) {
 	pingWorker();
 	//floodCanvas('underlay');
 	//drawingTests();
-	drawingTests(['\\']);
+	//drawingTests(['\\']);
 	//drawCorners([], [0]);
 });

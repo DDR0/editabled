@@ -1,5 +1,5 @@
 /* jshint worker: true, globalstrict: true, smarttabs: true, strict: false */
-/* global console, _, self, miscellaneousUtilities, cUtils, ArrayBuffer, DataView, Uint8Array, imageTree, c, cUtils, Uint8ClampedArray*/
+/* global console, _, self, miscellaneousUtilities, cUtils, ArrayBuffer, DataView, Uint8Array, imageTree, c, cUtils, Uint8ClampedArray, newLayerCanvas, runOffset*/
 "use strict";
 var lData = {};
 
@@ -12,7 +12,7 @@ lData.getLayerOffset = function(lobj, path) { //Returns the absolute X and Y of 
 		return {x:a.x+b.x, y:a.y+b.y};
 	});
 };
-//eu.getLayerOffset( cu.imageTree, [0,0])
+
 
 lData.sizeLayer = function(layer, box) { //Resizes the layer so that the bounding box would fit in to it.
 	var x1Exp = Math.min(0, box.x1 - layer.x1); //x1Exp = Left side expansion required to make box fit in layer. Will be a negative number, since it only needs to go left-er.
@@ -39,8 +39,7 @@ lData.sizeLayer = function(layer, box) { //Resizes the layer so that the boundin
 
 lData.moveLayerData = function(oldLayer, newLayer, options) { //Copies the layer image data from the oldLayer to the newLayer in a reasonably efficient manner.
 	/*  oldLayer: The old layer of data to copy from. (type "layerCanvas")
-	    newLayer: The new layer of data to copy to. (May actually be the
-	      same as oldLayer.)
+	    newLayer: The new layer of data to copy to. (May be the old layer.)
 	    options: (map)
 	      oldOrigin.x/y and newOrigin.x/y are optional. They specify the
 	        origin point for the rectange being copied from the old layer
@@ -116,4 +115,82 @@ lData.moveLayerData = function(oldLayer, newLayer, options) { //Copies the layer
 		}
 		c.log("Channel copy.");
 	}
+};
+
+lData.renderLayerData = function(imageTree, boundingBox, output) { //Takes an imageTree and a standard bounding box. Returns a new layer with a buffer formatted for drawing to <canvas>. If output (a layer) is given, then the results will be rendered appropriately to it instead.
+	boundingBox.x += runOffset.x; //Set in Pixel Store's onMessage.
+	boundingBox.y += runOffset.y;
+	c.log('rendering', boundingBox.x, boundingBox.y);
+	var layerPaths = cUtils.listLayerPaths(imageTree);
+	var boundingBox_ = boundingBox; //It would seem the use of boundingBox in duplicateBoundingBox implicitily declares a new boundingBox at the top of the function, overriding the variable we wish to duplicate. As a workaround, we take another reference to it.
+	var trace = layerPaths.map(function(layerPath) {
+		var boundingBox = cUtils.duplicateBoundingBox(boundingBox_); //We'll be changing the contents, here, so we should make a copy. The bounding box might be important.
+		var layerOffset = lData.getLayerOffset(imageTree, layerPath);
+		var layer = cUtils.getLayer(imageTree, layerPath);
+		var positionOffset = {x:layerOffset.x-layer.x, y:layerOffset.y-layer.y};
+		boundingBox.x -= positionOffset.x + layer.x;
+		boundingBox.y -= positionOffset.y + layer.y;
+		var normalizedQueryBox = {x:-layer.x+boundingBox.x, y:-layer.y+boundingBox.y}; //This is the actual x/y offset, which we can use with width/height, to find the location of a pixel at screen x/y.
+		normalizedQueryBox = cUtils.getBoundingBox({
+			x:[normalizedQueryBox.x, normalizedQueryBox.x+boundingBox.width -1],
+			y:[normalizedQueryBox.y, normalizedQueryBox.y+boundingBox.height-1],
+		});
+		//c.log(layer, boundingBox, normalizedQueryBox);
+		return {'layer':layer, 'box':normalizedQueryBox, 'array':new Uint8ClampedArray(layer.buffer)};
+		});
+		
+	//I am unsure of how well the following depth-first trace will perform,
+	//when the total size of every layer that needs to be checked exceeds various
+	//caches, since we'll have to hit every layer all the time. The alternative
+	//would be to add each layer under the results in a breadth-first search, but
+	//then we'd have to check the alpha of each pixel of the result each time we
+	//added another layer. It might be that the two processes are equivalent under
+	//the hood -- but, without tests, who knows?
+	
+	//c.log('tracing', trace);
+	//c.log(boundingBox);
+	
+	boundingBox.channels = 4;
+	var renderedLayer = newLayerCanvas(boundingBox);
+	var flattenedImage = new Uint8ClampedArray(renderedLayer.buffer);
+	//cUtils.setAll({data:flattenedImage, 0:128, 1:128, 3:255});
+	
+	var chans = renderedLayer.channels;
+	var pixel = [], initialAlpha;
+	var existingPixelX, existingPixelY, existingPixelStart, existingPixelSource;
+	var x, y, z, currentTraceDepth;
+	for (x=0; x < renderedLayer.width; x++) {
+		for (y=0; y < renderedLayer.height; y++) {
+			pixel.length = 0;
+			for(z=chans-1; z >= 0; z--) {pixel[z] = 0;}
+			
+			currentTraceDepth = 0;
+			while (currentTraceDepth < trace.length && pixel[3] < 254.5) { //Quit early if we already have a fully opaque pixel. Or close enough to a fully opaque one, since I doubt the floating-point math will work out quite right. The result will be rounded to the nearest whole number when it's inserted into the returned buffer, so we'll achieve full saturation of the channel, 255 for anything greater than 254.5. … Also … mercy, does this mean that that test is done every time we assign a value to an element in Editabled?
+				existingPixelX = trace[currentTraceDepth].box.x + x;
+				existingPixelY = trace[currentTraceDepth].box.y + y;
+				if(existingPixelX >= 0 && existingPixelX <= trace[currentTraceDepth].layer.width && existingPixelY >= 0 && existingPixelY <= trace[currentTraceDepth].layer.height) {
+					existingPixelStart = (existingPixelX + trace[currentTraceDepth].layer.width * existingPixelY) * trace[currentTraceDepth].layer.channels;
+					existingPixelSource = trace[currentTraceDepth].array;
+				} else { //Out of bounds.
+					existingPixelStart = 0;
+					existingPixelSource = trace[currentTraceDepth].layer.exteriorColour;
+				}
+				
+				initialAlpha = pixel[3]/255;
+				for(z=0; z < chans; z++) {
+					pixel[z] = pixel[z]*initialAlpha + existingPixelSource[existingPixelStart+z]*(1-initialAlpha);
+				}
+				
+				++currentTraceDepth;
+			}
+			
+			for(z=0; z < chans; z++) {
+				//No check is needed here for finite, because -- since it's being taken from a Uint8ClampedArray -- no non-finite values will find their way here.
+				flattenedImage[(x+renderedLayer.width*y)*renderedLayer.channels+z] = pixel[z];
+			}
+		}
+	}
+	c.log(renderedLayer);
+	
+	return renderedLayer;
 };

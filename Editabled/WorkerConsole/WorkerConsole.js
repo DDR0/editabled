@@ -78,7 +78,17 @@ if(typeof MessageChannel !== "undefined") {
                         // Copy the arguments into a real array
                         var args = Array.prototype.slice.call(arguments);
                         var errorLine = ((new Error()).stack.split('\n')[2].trim().split(' '));
-                        args = [errorLine[1].substring(7)+' (~/'+errorLine[2].split('/').slice(3).reduce(function(a,b) {return a+'/'+b;}) + '\n'].concat(args);
+                        if(errorLine[2]) {
+                            var url = unescape(errorLine[2]).split('/');
+                            var functionName = errorLine[1].split('.');
+                            functionName = functionName[functionName.length-1];
+                            if(url.length > 1) {
+                                args = [functionName+' (~/' + url.slice(3).reduce(function(a,b) {return a+'/'+b;}) + '\n'].concat(args);
+                            } else {
+                                args = [functionName+' (unknown location)\n'].concat(args);
+                            }
+                            
+                        }
                         // Send the arguments as a message, over our side channel
                         console._port.postMessage(args);
                     }

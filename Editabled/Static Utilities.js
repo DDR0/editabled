@@ -89,6 +89,7 @@ miscellaneousUtilities.init = function(globalObject, targetObject) {
 		return largeImage.getImageData(boundingBox.x, boundingBox.y, boundingBox.width, boundingBox.height);
 	};
 	
+	//Broken, assumes options.area starts at 0. Obsolete, in favour of moveLayerData?
 	t.convertBuffer = function(oldBuffer, options) { //Returns a copy of part of the old buffer. Options are: "area", takes a boundingBox (as returned by getBoundingBox, above); "outputChannels", which takes an integer or iteratable list containing the index of the target channel to map to. The index of the list is the OLD CHANNEL, and the contents at that index are the NEW CHANNEL. For example, to switch from [rgba] to [rgb], you would use [0,1,2] (or just the integer 3, which would be equivalent), with inputChannels set to 4. To switch back, use [0,1,2,,], with inputChannels set to 3. Number of output channels is implied by list length. Essentially a map of input chan → output chan. "inputChannels" is always an integer value.
 		var width = options.area.width;
 		var height = options.area.height;
@@ -116,7 +117,7 @@ miscellaneousUtilities.init = function(globalObject, targetObject) {
 		
 		for (var oldx = options.area.x1, newx = 0; oldx <= options.area.x2; oldx++, newx++) {
 			for (var oldy = options.area.y1, newy = 0; oldy <= options.area.y2; oldy++, newy++) {
-				depthOut.map(copyChans);
+				depthOut.forEach(copyChans);
 			}
 		}
 		
@@ -124,14 +125,14 @@ miscellaneousUtilities.init = function(globalObject, targetObject) {
 	};
 	
 	t.normalizeCoords = function(cmd, newOrigin) { //Cmd is a standard drawing command with [xs]/[ys], and newOrigin is a map containing an x/y value to be zeroed to. If you had a [100]/[100] points lists, and you passed in a bounding box that started at 90/90, then you would get a standard draw event back out but with the points lists [10]/[10]. "bufferWidth" is how many pixels wide the old buffer is.
-		_.range(cmd.x.length).map(function(index) {
+		_.range(cmd.x.length).forEach(function(index) {
 			cmd.x[index] -= newOrigin.x1;
 			cmd.y[index] -= newOrigin.y1;
 		});
 		return cmd;
 	};
 	
-	t.setAll = function(cmd) {
+	t.setAll = function(cmd) { //Fields: int chan=4, Uint8Array data, int 0,1,2,3,…,n.
 		cmd.chan = cmd.chan || 4;
 		var pixels = cmd.data.length/cmd.chan;
 		index = 0;
@@ -145,9 +146,9 @@ miscellaneousUtilities.init = function(globalObject, targetObject) {
 	t.setPixels = function(cmd) { //cmd.data should be a uint8 list. cmd.x/y: A list of x values and a corresponding list of y values to plot points at. drawUpdateRect is an optional arg, for use if you'd like to see the rectangle that was used when drawing the line. (For debug use only.)
 		if(!cmd.width) throw "width field required, must be greater than 0"; //missing height/data will cause crash soon enough
 		cmd.chan = cmd.chan || 4; //The number of channels deep the current graphic is. Default mapping is RGBA, or four channels. (Channels are numerically defined, like a list, in the command.)
-		_.range(cmd.x.length).map(function(index) {
+		_.range(cmd.x.length).forEach(function(index) {
 			var base_position = (cmd.x[index] + cmd.y[index]*cmd.width)*cmd.chan;
-			_.range(cmd.chan).map(function(index) {
+			_.range(cmd.chan).forEach(function(index) {
 				if(isFinite(cmd[index])) cmd.data[base_position+index] = cmd[index];
 			});
 		});
@@ -157,7 +158,7 @@ miscellaneousUtilities.init = function(globalObject, targetObject) {
 		if(drawUpdateRect) t.setAll({data:cmd.data, 0:_.random(0,127), 1:_.random(127,255), 2:_.random(127,255), 3:255});
 		var newXs = [cmd.x[0]]; //NOTE: This means that there is one pixel of overdraw for mouse-drawn multiline segments, since the mouse starts and ends at the same point if you're dragging it. Bounding box is calculated from points. Not a problem, as long as we're not calculating transparency in an additional manner. (Then, you'll see you draw two pixels at points where the mouse was sampled.)
 		var newYs = [cmd.y[0]];
-		_.range(1, cmd.x.length).map(function(index) {
+		_.range(1, cmd.x.length).forEach(function(index) {
 			var startX = _.last(newXs) + 0.5;
 			var startY = _.last(newYs) + 0.5;
 			var finalX = cmd.x[index] + 0.5;
@@ -222,6 +223,7 @@ miscellaneousUtilities.init = function(globalObject, targetObject) {
 		return layer;
 	};
 	
+	
 	var sizeIncreaseStep = 128; //TODO: Make this 512 when it's been proven to work a bit more.
 	t.aCeil = function(num, step) { //A "sign-agnostic ceiling function". Returns the next multiple of sizeIncreaseStep away from 0. (Behaves like the Anura % operator.)
 		step = step || sizeIncreaseStep;
@@ -234,5 +236,28 @@ miscellaneousUtilities.init = function(globalObject, targetObject) {
 	};
 	t.aFloor = function(num, step) {
 		return t.aCeil(num, -step);
+	};
+	
+	
+	
+	t.listLayers = function recurs (layerTree, criteria) { //Returns, in order, the layers which pass the criteria function. By default, this function only passes canvas layers.
+		criteria = criteria || function(layer) {return layer.type === 'canvas';};
+		if(layerTree.type === 'canvas' && layerTree.layers) {throw new Error("A canvas was found to have sub-layers.");}
+		return _.flatten((
+			criteria(layerTree) ? [[layerTree]] : []
+		).concat(
+			layerTree.layers ? layerTree.layers.map(function(layer) {return recurs(layer, criteria);}) : []
+		), true);
+	};
+		
+	t.listLayerPaths = function recurs (layerTree, criteria, path) { //Returns, in order, the paths to the layers which pass the criteria function. By default, this function only passes canvas layers.
+		criteria = criteria || function(layer) {return layer.type === 'canvas';};
+		path = path || [];
+		if(layerTree.type === 'canvas' && layerTree.layers) {throw new Error("A canvas was found to have sub-layers.");}
+		return _.flatten((
+			criteria(layerTree) ? [[path]] : []
+		).concat(
+			layerTree.layers ? layerTree.layers.map(function(layer, index) {return recurs(layer, criteria, path.concat(index));}) : []
+		), true);
 	};
 };

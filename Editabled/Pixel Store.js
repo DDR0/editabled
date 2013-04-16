@@ -38,8 +38,8 @@ var newLayerWindow = function(cmd) { //Note: These layer objects are usable as b
 	if(!cmd.width || !cmd.height) c.error('The pixel store tried to create a newLayerWindow with a width/height of ' + cmd.width + '/' + cmd.height + '.');
 	cmd = cmd || {};
 	_.extend(cmd, cUtils.getBoundingBox({
-		x:[cmd.x||0, (cmd.x||0)+cmd.width],
-		y:[cmd.y||0, (cmd.y||0)+cmd.height]
+		x:[cmd.x||0, (cmd.x||0)+cmd.width-1],
+		y:[cmd.y||0, (cmd.y||0)+cmd.height-1]
 	}));
 	cmd.type = 'window';
 	cmd.name = cmd.name || 'Window #'+(++wCounter);
@@ -51,8 +51,8 @@ var fCounter = 0;
 var newLayerFolder = function(cmd) {
 	cmd = cmd || {};
 	_.extend(cmd, cUtils.getBoundingBox({
-		x:[cmd.x||0, (cmd.x||0)+cmd.width],
-		y:[cmd.y||0, (cmd.y||0)+cmd.height]
+		x:[cmd.x||0, (cmd.x||0)+cmd.width-1],
+		y:[cmd.y||0, (cmd.y||0)+cmd.height-1]
 	}));
 	cmd.type = 'folder';
 	cmd.name = cmd.name || 'Folder #'+(++fCounter);
@@ -71,28 +71,26 @@ var newLayerCanvas = function(cmd) {
 	cmd.name = cmd.name || 'Canvas #'+(++cCounter);
 	cmd.channels = cmd.channels || 8; //Uint8 rgba ∑ 4, Uint32 tool# = 4
 	cmd.buffer = cUtils.newBuffer(cmd.width, cmd.height, cmd.channels);
-	cmd.exteriorColour = [128,,,255]; //This is what is returned when we render *outside* the layer.
+	cmd.exteriorColour = [128,,,255]; //This is what is returned when we access outside the layer data.
 	return cmd;
 };
-
-var addToImageTree = function(obj, path) { //TODO: Path is a list of indexes specifying where to add the new layer. Layer must be a type 'folder' to be subpathable. For example, the path [3,0,5] would mean, 'in the third folder from the top, in the top folder, the fifth element down is now obj and the old fifth element is now the sixth element.'
-	imageTree.layers = [].concat(imageTree.layers.slice(0,path[0]), obj, imageTree.layers.slice(path[0]));
-};
-
 
 
 
 // === Start event handlers. ===
 
-
+var runOffset; //This offset will be used later by Layer Manipulation's renderLayerData. It is how much we translated the input coords by.
 self.onmessage = function(event) {
-	var cmd = cUtils.eventNameFromCommand('on', event);
-	if(event.data && event.data.data && event.data.data.points && event.data.data.tool && event.data.data.tool.layer) {
-		var offset = lData.getLayerOffset(imageTree, event.data.data.tool.layer);
+	if(event.data && event.data.data && event.data.data.tool) {
+		runOffset = lData.getLayerOffset(imageTree, event.data.data.tool.layer);
+	} else {runOffset = {x:0, y:0};}
+	if(event.data && event.data.data && event.data.data.points) {
 		var points = event.data.data.points;
-		points.x = points.x.map(function(point) {return point-offset.x;});
-		points.y = points.y.map(function(point) {return point-offset.y;});
+		points.x = points.x.map(function(point) {return point-runOffset.x;});
+		points.y = points.y.map(function(point) {return point-runOffset.y;});
 	}
+	
+	var cmd = cUtils.eventNameFromCommand('on', event);
 	self[cmd]((delete event.data.data.command, event.data.data));
 };
 
@@ -104,13 +102,13 @@ var onPing = function() { //Fires off a simple message.
 
 var onInitializeLayerTree = function(data) {
 	self.imageTree = newLayerWindow(_.clone(data));
-	addToImageTree(newLayerCanvas(_.clone(data)), [0]);
-	//c.log('new layer:', newLayerCanvas(_.clone(data)));
+	cUtils.insertLayer(imageTree, [0], newLayerCanvas(_.extend(_.clone(data), {x:0,y:0})));
+	c.log(imageTree);
 };
 
 
 var onAddLayer = function(data) {
-	addToImageTree(newLayerCanvas(_.omit(data, 'path')), data.path);
+	cUtils.insertLayer(imageTree, data.path, newLayerCanvas(_.omit(data, 'path')));
 };
 
 
@@ -119,15 +117,16 @@ var onDrawLine = function(data) { //Draw a number of pixels to the canvas.
 	var layer = cUtils.getLayer(imageTree, data.tool.layer);
 	lData.sizeLayer(layer, boundingBox);
 	
+	//c.log(data.points.x, data.points.y, layer.x, layer.y, layer);
 	var imageData = new Uint8ClampedArray(layer.buffer);
 	cUtils.setLine(_.defaults({'data':imageData, 'width':layer.width, 'chan':layer.channels}, data.points, data.tool.colour));
 	//_.range(500000); //Test line-drawing with a busy wait.
 	sendUpdate(data.tool.layer, boundingBox);
 };
 
-var onFlash = function() {
+var onFlash = function() { //For testing. Refreshes the entire window.
 	var window = cUtils.getLayer(imageTree, []);
-	var boundingBox = cUtils.getBoundingBox({x:[window.x, window.x + window.width], y:[window.y, window.y + window.height]});
+	var boundingBox = cUtils.getBoundingBox({x:[0,100-1], y:[0,200-1]});
 	sendUpdate([0], boundingBox); //Write it to the output. Just a little hack until layer-specific rendering works... It just uses getLayer atm.
 };
 
@@ -136,8 +135,7 @@ var onForcefill = function(data) {
 	var layer = cUtils.getLayer(imageTree, data.tool.layer);
 	var canvas = cUtils.getLayer(imageTree, []);
 	cUtils.setAll(_.defaults({data: new Uint8ClampedArray(layer.buffer)}, data.tool.colour));
-	sendUpdate([0], layer);
-	c.log(data.tool);
+	sendUpdate([0], cUtils.duplicateBoundingBox(layer));
 };
 
 
@@ -145,22 +143,30 @@ var onForcefill = function(data) {
 
 
 var sendUpdate = function(layerPath, boundingBox) {
+	/*
+	//c.log('bounding box', boundingBox);
 	var layer = cUtils.getLayer(imageTree, layerPath);
 	var offset = lData.getLayerOffset(imageTree, layerPath); //This function could use some more testing.
 	//Just update background for now.
 	var bufferToReturn = cUtils.convertBuffer(layer.buffer, {area:boundingBox, bufferWidth:layer.width, outputChannels:4, inputChannels:8});
-	var bLength = bufferToReturn.byteLength;
+	
+	*/
+	var renderLayer = lData.renderLayerData(imageTree, boundingBox); //Render every layer to the underlay, for now, until we've got it working.
+	//c.log(renderLayer);
+	
+	var bLength = renderLayer.buffer.byteLength;
+	//c.log(new Uint8ClampedArray(bufferToReturn));
 	self.postMessage({
 		'command': 'pasteUpdate',
 		'data': {
 			layer: 'underlay',
 			bounds: {
-				x:[offset.x+boundingBox.x1, offset.x+boundingBox.x2], 
-				y:[offset.y+boundingBox.y1, offset.y+boundingBox.y2]},
-			data: bufferToReturn,
+				x:[/*runOffset.x + */renderLayer.x1, /*runOffset.x + */renderLayer.x2], 
+				y:[/*runOffset.y + */renderLayer.y1, /*runOffset.y + */renderLayer.y2]},
+			data: renderLayer.buffer,
 		},
-	}, [bufferToReturn]);
-	if(bLength === bufferToReturn.byteLength) { //If the buffer was copied, byteLength won't be readable anymore.
+	}, [renderLayer.buffer]);
+	if(bLength === renderLayer.buffer.byteLength) { //If the buffer was copied, byteLength won't be readable anymore.
 		c.log("The return buffer was serialized! [#u1P7T]");
 		throw new Error("The return buffer was serialized! [#u1P7T]");
 	}

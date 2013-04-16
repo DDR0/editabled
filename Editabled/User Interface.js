@@ -49,6 +49,7 @@ editors.map(function(index) {
 	
 	ui.draw = function() {  //For the tests. They call ui.draw, and don't specify the .to property.
 		arguments[0].to = 'uiCache';
+		//arguments[0].absolutePosition = true;
 		ui.drawLine.apply(this, arguments);
 	};
 	
