@@ -119,7 +119,7 @@ var onDrawLine = function(data) { //Draw a number of pixels to the canvas.
 	
 	//c.log(data.points.x, data.points.y, layer.x, layer.y, layer);
 	var imageData = new Uint8ClampedArray(layer.buffer);
-	cUtils.setLine(_.defaults({'data':imageData, 'width':layer.width, 'chan':layer.channels}, data.points, data.tool.colour));
+	cUtils.setLine(_.defaults({'data':imageData, 'width':layer.width, 'chan':layer.channels}, cUtils.normalizeCoords(data.points, layer), data.tool.colour));
 	//_.range(500000); //Test line-drawing with a busy wait.
 	sendUpdate(data.tool.layer, boundingBox);
 };
