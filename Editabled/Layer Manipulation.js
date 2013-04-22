@@ -19,17 +19,14 @@ lData.sizeLayer = function(layer, box) { //Resizes the layer so that the boundin
 	var y1Exp = Math.min(0, box.y1 - layer.y1);
 	var x2Exp = -Math.min(0, layer.x2 - box.x2);
 	var y2Exp = -Math.min(0, layer.y2 - box.y2);
-	//c.log('recommended expansion xyxy: ', !!x1Exp||!!y1Exp||!!x2Exp||!!y2Exp);
-	c.log('recommended expansion xyxy: ', x1Exp,y1Exp,x2Exp,y2Exp);
+	//c.log('recommended expansion xyxy: ', x1Exp,y1Exp,x2Exp,y2Exp);
 	if(x1Exp||y1Exp||x2Exp||y2Exp) {
 		var resizedLayer = cUtils.duplicateBoundingBox(layer);
 		_.defaults(resizedLayer, layer);
-		c.log('before', resizedLayer);
 		if(x1Exp) resizedLayer.x1 = cUtils.aCeil(resizedLayer.x1 + x1Exp - 1);
 		if(y1Exp) resizedLayer.y1 = cUtils.aCeil(resizedLayer.y1 + y1Exp - 1);
 		if(x2Exp) resizedLayer.x2 = cUtils.aCeil(resizedLayer.x2 + x2Exp + 1) - 1; //OK, this is I think needed because 0 overlaps in the aCeil math when we expand negatively. Since we expand in 512-pixel incrementns, we should ensure that we do not exceed by one and make a 516-pixel wide image, because I think that'd do bad things to some optimization somewhere. Waste of space, and all. At any rate, the -1 makes the math correct here (I measured) for round numbers of pixels. :) This is pure 'gut feeling', unfortunantly, since I don't know a way to directly profile this.
 		if(y2Exp) resizedLayer.y2 = cUtils.aCeil(resizedLayer.y2 + y2Exp + 1) - 1; //The if statements keep the -1s from being applied if there is no change, if the layer has been initialized juuuust wrong, ie, equal to cUtils.aCeil(resizedLayer.y2 + y2Exp).
-		c.log('after', resizedLayer),
 		resizedLayer.buffer = cUtils.newBuffer(resizedLayer.width, resizedLayer.height, resizedLayer.channels);
 		lData.moveLayerData(layer, resizedLayer, {area: layer, optimization:'line'});
 		_.extend(layer, resizedLayer);
@@ -70,13 +67,10 @@ lData.moveLayerData = function(oldLayer, newLayer, options) { //Copies the layer
 	var oldOffsetY = -oldLayer.y,                                         newOffsetY = -newLayer.y + (oldBaseY - newBaseY);
 	var oldArray = new Uint8ClampedArray(oldLayer.buffer),                newArray = new Uint8ClampedArray(newLayer.buffer);
 	
-	c.log('offests', oldBaseX, oldOffsetX, newBaseX, newOffsetX);
-	
 	//TODO: Clip the copy rectangle so that it fits inside the read and write layers.
 	
 	var oldBlockStart, newBlockStart, blockLength, line, column, channel;
-	//TODO: OldBaseX doesn't need to === 0. Remove once a test case is available.
-	if(oldBaseX===0 && newBaseX===0 && width===oldLayer.width && width===newLayer.width && oldLayer.channels===newLayer.channels && _.isEqual(channels, defaultChannels) ) { //We want to copy full lines into full lines. This means we don't have to skip spaces (columns), but can copy the entire contiguous section in one go.
+	if(oldBaseX === newBaseX && width===oldLayer.width && width===newLayer.width && oldLayer.channels===newLayer.channels && _.isEqual(channels, defaultChannels) ) { //We want to copy full lines into full lines. This means we don't have to skip spaces (columns), but can copy the entire contiguous section in one go.
 		oldBlockStart = (oldOffsetX+(oldBaseY+oldOffsetY)*width)*oldLayer.channels; //Commented out oldBaseY because it was cancelling out some math and causing the equasion to be 0.
 		newBlockStart = (newOffsetX+(newBaseY+newOffsetY)*width)*newLayer.channels;
 		blockLength = width*height*oldLayer.channels;
@@ -105,9 +99,9 @@ lData.moveLayerData = function(oldLayer, newLayer, options) { //Copies the layer
 		var copyChans = function(to, from) {newArray[newBlockStart+to] = oldArray[oldBlockStart+from];};
 		for(line = 0; line < height; line++) {
 			oldBlockStart = (
-				(oldOffsetY + oldBaseY + line) * oldLayer.width + //Y offset, including line.
-				oldOffsetX + oldBaseX) *                          //X offset
-				oldLayer.channels;                                //Size of a pixel, in Uint8s.
+				(oldOffsetY + oldBaseY + line) * oldLayer.width +
+				oldOffsetX + oldBaseX) *
+				oldLayer.channels;
 			newBlockStart = (
 				(newOffsetY + newBaseY + line) * newLayer.width +
 				newOffsetX + newBaseX) *
