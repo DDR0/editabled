@@ -1,5 +1,5 @@
 /* jshint worker: true, globalstrict: true, smarttabs: true, strict: false */
-/* global console, _, self, miscellaneousUtilities, cUtils, ArrayBuffer, DataView, Uint8Array, imageTree, c, cUtils, Uint8ClampedArray, newLayerCanvas, runOffset*/
+/* global console, _, self, miscellaneousUtilities, cUtils, ArrayBuffer, DataView, imageTree, c, cUtils, Uint8ClampedArray, newLayerCanvas, runOffset*/
 "use strict";
 var lData = {};
 
@@ -115,6 +115,7 @@ lData.moveLayerData = function(oldLayer, newLayer, options) { //Copies the layer
 };
 
 lData.renderLayerData = function(imageTree, boundingBox, output) { //Takes an imageTree and a standard bounding box. Returns a new layer with a buffer formatted for drawing to <canvas>. If output (a layer) is given, then the results will be rendered appropriately to it instead.
+	boundingBox = cUtils.duplicateBoundingBox(boundingBox);
 	boundingBox.x += runOffset.x; //Set in Pixel Store's onMessage.
 	boundingBox.y += runOffset.y;
 	var layerPaths = cUtils.listLayerPaths(imageTree);
@@ -123,6 +124,7 @@ lData.renderLayerData = function(imageTree, boundingBox, output) { //Takes an im
 		var boundingBox = cUtils.duplicateBoundingBox(boundingBox_); //We'll be changing the contents, here, so we should make a copy. The bounding box might be important.
 		var layerOffset = lData.getLayerOffset(imageTree, layerPath);
 		var layer = cUtils.getLayer(imageTree, layerPath);
+		if(typeof layer.exteriorColour.byteLength !== "number") {throw new Error('layerExteriorColour must be a Uint8ClampedArray for speed purposes.');}
 		var positionOffset = {x:layerOffset.x-layer.x, y:layerOffset.y-layer.y};
 		boundingBox.x -= positionOffset.x + layer.x;
 		boundingBox.y -= positionOffset.y + layer.y;
@@ -132,7 +134,16 @@ lData.renderLayerData = function(imageTree, boundingBox, output) { //Takes an im
 			y:[normalizedQueryBox.y, normalizedQueryBox.y+boundingBox.height-1],
 		});
 		//c.log(layer, boundingBox, normalizedQueryBox);
-		return {'layer':layer, 'box':normalizedQueryBox, 'array':new Uint8ClampedArray(layer.buffer)};
+		
+		var properties = Object.create(null); //Create *empty* map. Put all referenced keys in this map.
+		properties.layerWidth = layer.width;
+		properties.layerHeight = layer.height;
+		properties.layerChannels = layer.channels;
+		properties.layerExteriorColour = layer.exteriorColour;
+		properties.array = new Uint8ClampedArray(layer.buffer);
+		properties.boxX = normalizedQueryBox.x;
+		properties.boxY = normalizedQueryBox.y;
+		return properties;
 		});
 		
 	//I am unsure of how well the following depth-first trace will perform,
@@ -152,40 +163,48 @@ lData.renderLayerData = function(imageTree, boundingBox, output) { //Takes an im
 	//cUtils.setAll({data:flattenedImage, 0:128, 1:128, 3:255});
 	
 	var chans = renderedLayer.channels;
-	var pixel = [], initialAlpha;
+	var pixel = new Uint8ClampedArray(chans), initialAlpha;
 	var existingPixelX, existingPixelY, existingPixelStart, existingPixelSource;
-	var x, y, z, currentTraceDepth;
-	for (x=0; x < renderedLayer.width; x++) {
-		for (y=0; y < renderedLayer.height; y++) {
-			pixel.length = 0;
-			for(z=chans-1; z >= 0; z--) {pixel[z] = 0;}
+	var x, y, z, currentTraceDepth, traceAtDepth;
+	
+	var renderedLayerWidth = renderedLayer.width;
+	var renderedLayerHeight = renderedLayer.height;
+	var renderedLayerChannels = renderedLayer.channels;
+	var traceLength = trace.length;
+	
+	for (x=0; x < renderedLayerWidth; x++) {
+		for (y=0; y < renderedLayerHeight; y++) {
+			for(z=0; z < chans; z++) {pixel[z] = 0;}
 			
+			//300ms here. v
 			currentTraceDepth = 0;
-			while (currentTraceDepth < trace.length && pixel[3] < 254.5) { //Quit early if we already have a fully opaque pixel. Or close enough to a fully opaque one, since I doubt the floating-point math will work out quite right. The result will be rounded to the nearest whole number when it's inserted into the returned buffer, so we'll achieve full saturation of the channel, 255 for anything greater than 254.5. … Also … mercy, does this mean that that test is done every time we assign a value to an element in Editabled?
-				existingPixelX = trace[currentTraceDepth].box.x + x;
-				existingPixelY = trace[currentTraceDepth].box.y + y;
-				if(existingPixelX >= 0 && existingPixelX <= trace[currentTraceDepth].layer.width && existingPixelY >= 0 && existingPixelY <= trace[currentTraceDepth].layer.height) {
-					existingPixelStart = (existingPixelX + trace[currentTraceDepth].layer.width * existingPixelY) * trace[currentTraceDepth].layer.channels;
-					existingPixelSource = trace[currentTraceDepth].array;
+			while (currentTraceDepth < traceLength && pixel[3] < 242) { //Quit early if we already have a fully opaque pixel. Or close enough to a fully opaque one, since I doubt the floating-point math will work out quite right. The result will be rounded to the nearest whole number when it's inserted into the returned buffer, so we'll achieve full saturation of the channel, 255 for anything greater than 254.5. … Also … mercy, does this mean that that test is done every time we assign a value to an element in Editabled? //Switched to using Uint8Clamped array for pixel accumulator, less accurate but -1/5 second runtime.
+				traceAtDepth = trace[currentTraceDepth]; //Saves ~20ms.
+				existingPixelX = traceAtDepth.boxX + x;
+				existingPixelY = traceAtDepth.boxY + y;
+				if(existingPixelX >= 0 && existingPixelX < traceAtDepth.layerWidth && existingPixelY >= 0 && existingPixelY < traceAtDepth.layerHeight) { // existingPixelY <= traceAtDepth.layerHeight makes the thing run 2x slower, same with x version.
+					existingPixelStart = (existingPixelX + traceAtDepth.layerWidth * existingPixelY) * traceAtDepth.layerChannels;
+					existingPixelSource = traceAtDepth.array;
 				} else { //Out of bounds.
 					existingPixelStart = 0;
-					existingPixelSource = trace[currentTraceDepth].layer.exteriorColour;
+					existingPixelSource = traceAtDepth.layerExteriorColour;
 				}
 				
 				initialAlpha = pixel[3]/255;
-				for(z=0; z < chans; z++) {
+				for(z=0; z < chans; z++) { //Pixel colour accumulator.
 					pixel[z] = pixel[z]*initialAlpha + existingPixelSource[existingPixelStart+z]*(1-initialAlpha);
 				}
 				
 				++currentTraceDepth;
 			}
 			
-			for(z=0; z < chans; z++) {
-				//No check is needed here for finite, because -- since it's being taken from a Uint8ClampedArray -- no non-finite values will find their way here.
-				flattenedImage[(x+renderedLayer.width*y)*renderedLayer.channels+z] = pixel[z];
+			//100ms here. v
+			for(z=0; z < chans; z++) { //No check is needed here for finite, because -- since it's being taken from a Uint8ClampedArray -- no non-finite values will find their way here.
+				flattenedImage[(x+renderedLayerWidth*y)*renderedLayerChannels+z] = pixel[z];
 			}
 		}
 	}
+	
 	//c.log(renderedLayer);
 	return renderedLayer;
 };

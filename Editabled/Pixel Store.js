@@ -71,13 +71,19 @@ var newLayerCanvas = function(cmd) {
 	cmd.name = cmd.name || 'Canvas #'+(++cCounter);
 	cmd.channels = cmd.channels || 8; //Uint8 rgba ∑ 4, Uint32 tool# = 4
 	cmd.buffer = cUtils.newBuffer(cmd.width, cmd.height, cmd.channels);
-	cmd.exteriorColour = [128,,,255]; //This is what is returned when we access outside the layer data.
+	cmd.exteriorColour = new Uint8ClampedArray([128,,,255]); //This is what is returned when we access outside the layer data. It must be a Uint8ClampedArray, or else renderLayerData will be 4x as slow as it is.
 	return cmd;
 };
 
 
-
 // === Start event handlers. ===
+
+var onInitializeLayerTree = function(data) {
+	self.imageTree = newLayerWindow(_.clone(data));
+	cUtils.insertLayer(imageTree, [0], newLayerCanvas(_.extend(_.clone(data), {x:0,y:0})));
+	//c.log(imageTree); //Causes Chrome to crash when the screen is larger than about 800x800 on winXP.
+};
+
 
 var runOffset; //This offset will be used later by Layer Manipulation's renderLayerData. It is how much we translated the input coords by.
 self.onmessage = function(event) {
@@ -100,15 +106,17 @@ var onPing = function() { //Fires off a simple message.
 };
 
 
-var onInitializeLayerTree = function(data) {
-	self.imageTree = newLayerWindow(_.clone(data));
-	cUtils.insertLayer(imageTree, [0], newLayerCanvas(_.extend(_.clone(data), {x:0,y:0})));
-	c.log(imageTree);
-};
-
-
 var onAddLayer = function(data) {
 	cUtils.insertLayer(imageTree, data.path, newLayerCanvas(_.omit(data, 'path')));
+};
+
+var onChangeLayerData = function(data) {
+	c.log(data);
+	var layer = cUtils.getLayer(self.imageTree, data.path);
+	_.keys(data.delta).forEach(function(key) {
+		layer[key] += data.delta[key];
+	});
+	sendUpdate(data.path, layer);
 };
 
 
@@ -126,8 +134,8 @@ var onDrawLine = function(data) { //Draw a number of pixels to the canvas.
 
 var onFlash = function() { //For testing. Refreshes the entire window.
 	var window = cUtils.getLayer(imageTree, []);
-	var boundingBox = cUtils.getBoundingBox({x:[0,100-1], y:[0,200-1]});
-	sendUpdate([0], boundingBox); //Write it to the output. Just a little hack until layer-specific rendering works... It just uses getLayer atm.
+	//window = cUtils.getBoundingBox({x:[0,100-1], y:[0,200-1]});
+	sendUpdate([0], window); //Write it to the output. Just a little hack until layer-specific rendering works... It just uses getLayer atm.
 };
 
 var onForcefill = function(data) {
@@ -151,7 +159,7 @@ var sendUpdate = function(layerPath, boundingBox) {
 	var bufferToReturn = cUtils.convertBuffer(layer.buffer, {area:boundingBox, bufferWidth:layer.width, outputChannels:4, inputChannels:8});
 	
 	*/
-	var renderLayer = lData.renderLayerData(imageTree, boundingBox); //Render every layer to the underlay, for now, until we've got it working.
+	var renderLayer = lData.renderLayerData(imageTree, boundingBox); //Render every layer to the activeLayer, for now, until we've got it working.
 	//c.log(renderLayer);
 	
 	var bLength = renderLayer.buffer.byteLength;
@@ -159,7 +167,7 @@ var sendUpdate = function(layerPath, boundingBox) {
 	self.postMessage({
 		'command': 'pasteUpdate',
 		'data': {
-			layer: 'underlay',
+			layer: 'activeLayer',
 			bounds: {
 				x:[/*runOffset.x + */renderLayer.x1, /*runOffset.x + */renderLayer.x2], 
 				y:[/*runOffset.y + */renderLayer.y1, /*runOffset.y + */renderLayer.y2]},

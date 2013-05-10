@@ -20,6 +20,33 @@ miscellaneousUtilities.init = function(globalObject, targetObject) {
 	
 	//t.sum = function(list) {return list.reduce(function(a,b) {return a+b;});};
 	
+	(function tmp() {
+		var mappings = { //We'll cache the inversion of this. For now. Note that inclusion here doesn't mean swallowing, the named event must be present for that in UI.js.
+			//Key: x.y where x is the key code and y is the control keys pressed. Shift = 1, ctrl = 2, alt = 4, super = 8. For example ctrl-alt-a would be 65.6. Alt-shift-super-c would be 67.13.
+		//	 16.0: 'shift', //Don't need events for these, everything is *registered* anyway.
+		//	 17.0: 'ctrl',
+		//	 18.0: 'alt',
+			 37.0: 'mediumMoveLeft',        //Move the viewport.
+			 38.0: 'mediumMoveUp',
+			 39.0: 'mediumMoveRight',
+			 40.0: 'mediumMoveDown',
+			 66.0: 'forcefill',   //b Bucket tool stand-in. Fills the current layer with a colour.
+			 67.0: 'cycleColour', //c Sets the tool colour to random.
+			 70.0: 'flash',       //f Discards the contenst of the screen, rerendering everything from layer [0].
+			 80.0: 'selectPencil',//p Pencil tool.
+		//	 91.0: 'meta', //We'll not use meta, as it should be reserved for OS commands, eg, meta-r for 'run'.
+		//	117.0: 'menu', //The menu key isn't swallowed correctly on chrome. It still brings up the menu. Also, I'm using it as my linux 'compose key' – on firefox, it shows up as key #0, while on chrome the event isn't fired at all.
+		};
+		var codeToAction = mappings;
+		var actionToCode = _.invert(mappings);
+		t.codeToAction = function(code) {
+			return codeToAction[code];
+		};
+		t.actionToCode = function(code) {
+			return actionToCode[code];
+		};
+	})();
+	
 	
 	/* BITMAP FUNCTIONS */
 	
@@ -224,7 +251,7 @@ miscellaneousUtilities.init = function(globalObject, targetObject) {
 	};
 	
 	
-	var sizeIncreaseStep = 128; //TODO: Make this 512 when it's been proven to work a bit more.
+	var sizeIncreaseStep = 512; //TODO: Make this 512 when it's been proven to work a bit more.
 	t.aCeil = function(num, step) { //A "sign-agnostic ceiling function". Returns the next multiple of sizeIncreaseStep away from 0. (Behaves like the Anura % operator.)
 		step = step || sizeIncreaseStep;
 		if(!(num%step)) return num; //No change needed. (0 remains unchanged.) Will pass bad values like NaN or ±Infinity, though.

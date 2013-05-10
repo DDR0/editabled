@@ -200,7 +200,7 @@ editors.map(function(index) {
 	
 	
 	var keyDownEvent = function(event, key) { //key is a numeric keycode
-		var action = utils.codeToAction(key);
+		var action = sUtils.codeToAction(key);
 		c.log('key action: ', action);
 		if(action && ui[action]) {
 			var args = {
