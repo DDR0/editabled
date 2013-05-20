@@ -12,9 +12,10 @@ editors.map(function(index) {
 	ui.tool = { //The post-computation tool we'll be using.
 		type: 'pencil',
 		colour: {0: 255, 1:255, 2:255, 3:255}, //0→red 1→green 2→blue 3→alpha, in case I forget and 1-index it again.
-		layer: [0],
+		layer: [0,0],
 		
 	};
+	ui.focusedWindow = [0];
 	
 	ui.drawLine = function(data) {
 		if(data.to !== 'ui' && data.to !== undefined) {
@@ -39,9 +40,9 @@ editors.map(function(index) {
 				if(isFinite(value)) command[index] = value;
 			});
 		} else {
-			//_.extend(command, ui.tool.colour);
-			command[0] = 255;
-			command[3] = 255;
+			_.extend(command, ui.tool.colour);
+			// command[0] = 255;
+			// command[3] = 255;
 		}
 		cUtils.setLine(
 			cUtils.normalizeCoords(command, boundingBox)/*, true*/);
@@ -85,28 +86,17 @@ editors.map(function(index) {
 		var layer = cUtils.getLayer(utils.imageTree, path);
 		var imageData = ctx.getImageData(0,0,layer.width-1,layer.height-1);
 		ctx.clearRect(0,0,layer.width-1,layer.height-1);
-		ctx.putImageData(imageData, -x, -y);
+		ctx.putImageData(imageData, x, y);
 	};
-	ui.mediumMoveLeft = function(event) {
-		var x = 100; var y = 0;
-		previewTranslate(-x, -y, []);
-		utils.layer({command:'changeLayerData', data:{delta:{x:x, y:y}, path:[]}}); //Should be 1/8th of a screen.
+	
+	var jumpMove = function(x,y) {
+		previewTranslate(x, y, []);
+		utils.layer({command:'changeLayerData', data:{delta:{x:x, y:y}, path: ui.focusedWindow}}); //Should be 1/8th of a screen.
 	};
-	ui.mediumMoveRight = function(event) {
-		var x = -100; var y = 0;
-		previewTranslate(-x, -y, []);
-		utils.layer({command:'changeLayerData', data:{delta:{x:x, y:y}, path:[]}}); //Should be 1/8th of a screen.
-	};
-	ui.mediumMoveUp = function(event) {
-		var x = 0; var y = 100;
-		previewTranslate(-x, -y, []);
-		utils.layer({command:'changeLayerData', data:{delta:{x:x, y:y}, path:[]}}); //Should be 1/8th of a screen.
-	};
-	ui.mediumMoveDown = function(event) {
-		var x = 0; var y = -100;
-		previewTranslate(-x, -y, []);
-		utils.layer({command:'changeLayerData', data:{delta:{x:x, y:y}, path:[]}}); //Should be 1/8th of a screen.
-	};
+	ui.mediumMoveLeft = function(event)  {jumpMove(+100, 0);};
+	ui.mediumMoveRight = function(event) {jumpMove(-100, 0);};
+	ui.mediumMoveUp = function(event)    {jumpMove(0, +100);};
+	ui.mediumMoveDown = function(event)  {jumpMove(0, -100);};
 	
 	
 	//Some of the debuggier functions follow.

@@ -15,7 +15,7 @@ editors.map(function(index) {
 	
 	var isFirefox = navigator.userAgent.indexOf("Firefox") >= 0; //Faking the UA string will just affect tweaks, nothing will out-and-out break. If you say you're someone different, that's your problem.
 	utils.useDelayInputWorkaround = isFirefox; //Firefox grabs mouse move input in preference to rendering, which causes ridiculous delays while it repeatedly grabs the mouse and defers painting the results. The solution is to delay the rendering results running by using window.setTimeout(). This adds a noticable though not lethal lag in rendering, so we should only use it when we need to.
-	utils.useMouseOffsetWorkaround = isFirefox; //Firefox, for some reason, writes to the canvas one pixel below the crosshair's center.
+	utils.useMouseOffsetWorkaround = false; //Firefox, for some reason, writes to the canvas one pixel below the crosshair's center.
 	
 	
 	/* LAYERS */
@@ -36,7 +36,8 @@ editors.map(function(index) {
 				break;
 			case 'initializeLayerTree':
 				utils.imageTree = utils.newLayerWindow(cmd.data);
-				cUtils.insertLayer(utils.imageTree, [0], utils.newLayerCanvas(cmd.data));
+				cUtils.insertLayer(utils.imageTree, [0], utils.newLayerWindow(cmd.data));
+				cUtils.insertLayer(utils.imageTree, [0,0], utils.newLayerCanvas(cmd.data));
 				break;
 			case 'setLayerData':
 				c.error('todo: implement setting here');

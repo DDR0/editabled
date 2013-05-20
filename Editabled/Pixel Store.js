@@ -71,7 +71,7 @@ var newLayerCanvas = function(cmd) {
 	cmd.name = cmd.name || 'Canvas #'+(++cCounter);
 	cmd.channels = cmd.channels || 8; //Uint8 rgba ∑ 4, Uint32 tool# = 4
 	cmd.buffer = cUtils.newBuffer(cmd.width, cmd.height, cmd.channels);
-	cmd.exteriorColour = new Uint8ClampedArray([128,,,255]); //This is what is returned when we access outside the layer data. It must be a Uint8ClampedArray, or else renderLayerData will be 4x as slow as it is.
+	cmd.exteriorColour = new Uint8ClampedArray([,,,255]); //This is what is returned when we access outside the layer data. It must be a Uint8ClampedArray, or else renderLayerData will be 4x as slow as it is.
 	return cmd;
 };
 
@@ -80,7 +80,8 @@ var newLayerCanvas = function(cmd) {
 
 var onInitializeLayerTree = function(data) {
 	self.imageTree = newLayerWindow(_.clone(data));
-	cUtils.insertLayer(imageTree, [0], newLayerCanvas(_.extend(_.clone(data), {x:0,y:0})));
+	cUtils.insertLayer(imageTree, [0], newLayerWindow(_.clone(data)));
+	cUtils.insertLayer(imageTree, [0,0], newLayerCanvas(_.extend(_.clone(data), {x:0,y:0})));
 	//c.log(imageTree); //Causes Chrome to crash when the screen is larger than about 800x800 on winXP.
 };
 
@@ -125,9 +126,8 @@ var onDrawLine = function(data) { //Draw a number of pixels to the canvas.
 	var layer = cUtils.getLayer(imageTree, data.tool.layer);
 	lData.sizeLayer(layer, boundingBox);
 	
-	//c.log(data.points.x, data.points.y, layer.x, layer.y, layer);
-	var imageData = new Uint8ClampedArray(layer.buffer);
-	cUtils.setLine(_.defaults({'data':imageData, 'width':layer.width, 'chan':layer.channels}, cUtils.normalizeCoords(data.points, layer), data.tool.colour));
+	lData.setLine(layer, data.points, data.tool.colour);
+	
 	//_.range(500000); //Test line-drawing with a busy wait.
 	sendUpdate(data.tool.layer, boundingBox);
 };
