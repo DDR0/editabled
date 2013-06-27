@@ -23,7 +23,7 @@ editors.map(function(index) {
 	
 	utils.layer = function(cmd) { //When passing a layer message to Pixel Store, pass it through this which will keep the near-side layer data in synch. We need to maintain two copies, since, assuming Pixel Store is in the middle of five minuites of doing *something*, we have no way of getting the data out of it. So, we duplicate!
 		edLib.pxStore.postMessage(cmd); //Do this first on the off-chance we accidentally hose cmd in some of our processing. Cmd is copied when it's passed, so we can multch it later without reprecussions.
-		switch(cmd.command) {
+		switch(cmd.command) { //These should be changed to functions in another file, and called.
 			case 'addLayer':
 				//utils.imageTree.push({type:'layer'});
 				c.error('todo: implement adding layer here');
@@ -38,6 +38,7 @@ editors.map(function(index) {
 				utils.imageTree = utils.newLayerWindow(cmd.data);
 				cUtils.insertLayer(utils.imageTree, [0], utils.newLayerWindow(cmd.data));
 				cUtils.insertLayer(utils.imageTree, [0,0], utils.newLayerCanvas(cmd.data));
+				cUtils.insertLayer(utils.imageTree, [1], utils.newLayerCanvas(cmd.data));
 				break;
 			case 'setLayerData':
 				c.error('todo: implement setting here');

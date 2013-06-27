@@ -159,8 +159,8 @@ miscellaneousUtilities.init = function(globalObject, targetObject) {
 		return cmd;
 	};
 	
-	t.setAll = function(cmd) { //Fields: int chan=4, Uint8Array data, int 0,1,2,3,…,n.
-		cmd.chan = cmd.chan || 4;
+	t.setAll = function(cmd) { //Fields: int chan=8, Uint8Array data, int 0,1,2,3,…,n.
+		cmd.chan = cmd.chan || 8;
 		var pixels = cmd.data.length/cmd.chan;
 		index = 0;
 		for (var index = 0; index < pixels; index++) {
@@ -215,7 +215,6 @@ miscellaneousUtilities.init = function(globalObject, targetObject) {
 		
 		cmd.x = newXs;
 		cmd.y = newYs;
-		//c.log('lines', [cmd.x, cmd.y])
 		t.setPixels(cmd);
 	};
 	
@@ -251,12 +250,11 @@ miscellaneousUtilities.init = function(globalObject, targetObject) {
 	};
 	
 	
-	var sizeIncreaseStep = 512; //TODO: Make this 512 when it's been proven to work a bit more.
+	var sizeIncreaseStep = 512;
 	t.aCeil = function(num, step) { //A "sign-agnostic ceiling function". Returns the next multiple of sizeIncreaseStep away from 0. (Behaves like the Anura % operator.)
 		step = step || sizeIncreaseStep;
 		if(!(num%step)) return num; //No change needed. (0 remains unchanged.) Will pass bad values like NaN or ±Infinity, though.
-		//if(!num) return num; //No change for 0;
-		var negative = num < 0 ? -1 : 1;
+		var negative = num < 0 ? -1 : +1;
 		num = Math.abs(num);
 		num = (Math.floor(num/step)+1)*step;
 		return negative * num;

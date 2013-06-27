@@ -127,13 +127,20 @@ lData.renderLayerData = function(imageTree, boundingBox, output) { //Takes an im
 	boundingBox = cUtils.duplicateBoundingBox(boundingBox);
 	boundingBox.x += runOffset.x; //Set in Pixel Store's onMessage.
 	boundingBox.y += runOffset.y;
-	var layerPaths = cUtils.listLayerPaths(imageTree);
+	boundingBox.channels = 4;
 	var boundingBox_ = boundingBox; //It would seem the use of boundingBox in duplicateBoundingBox implicitily declares a new boundingBox at the top of the function, overriding the variable we wish to duplicate. As a workaround, we take another reference to it.
+	
+	var layerPaths = cUtils.listLayerPaths(imageTree).reverse(); //A higher layer number means it'll be rendered first. listLayerPaths returns [0,1,2,…], but we want to consider the last layer first, ie, start → […,2,1,0] → result.
+	
 	var trace = layerPaths.map(function(layerPath) {
 		var boundingBox = cUtils.duplicateBoundingBox(boundingBox_); //We'll be changing the contents, here, so we should make a copy. The bounding box might be important.
 		var layerOffset = lData.getLayerOffset(imageTree, layerPath);
 		var layer = cUtils.getLayer(imageTree, layerPath);
-		if(typeof layer.exteriorColour.byteLength !== "number") {throw new Error('layerExteriorColour must be a Uint8ClampedArray for speed purposes.');}
+		
+		//Sanity-check our layers.
+		if(typeof layer.exteriorColour.byteLength !== "number") {throw new Error('layerExteriorColour does not have a byteLength. layerExteriorColour must be a Uint8ClampedArray for speed purposes.');}
+		if(layer.exteriorColour.byteLength < boundingBox_.channels) {throw new Error('layerExteriorColour has a bytelength of '+layer.exteriorColour.byteLength+'. However, we are rendering to '+boundingBox_.channels+' channels. While this will still work, it will work about 20x slower and it will do so silently. (This meant that one missing comma in Pixel Store would produce a slowdown in a very complex function in Layer Manipulation, without any hint as to why.)');}
+		
 		var positionOffset = {x:layerOffset.x-layer.x, y:layerOffset.y-layer.y};
 		boundingBox.x -= positionOffset.x + layer.x;
 		boundingBox.y -= positionOffset.y + layer.y;
@@ -153,7 +160,7 @@ lData.renderLayerData = function(imageTree, boundingBox, output) { //Takes an im
 		properties.boxX = normalizedQueryBox.x;
 		properties.boxY = normalizedQueryBox.y;
 		return properties;
-		});
+	});
 		
 	//I am unsure of how well the following depth-first trace will perform,
 	//when the total size of every layer that needs to be checked exceeds various
@@ -166,7 +173,6 @@ lData.renderLayerData = function(imageTree, boundingBox, output) { //Takes an im
 	//c.log('tracing', trace);
 	//c.log(boundingBox);
 	
-	boundingBox.channels = 4;
 	var renderedLayer = newLayerCanvas(boundingBox);
 	var flattenedImage = new Uint8ClampedArray(renderedLayer.buffer);
 	//cUtils.setAll({data:flattenedImage, 0:128, 1:128, 3:255});

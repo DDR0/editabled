@@ -29,7 +29,6 @@ if(typeof console === 'undefined') {
 	c = console;
 }
 
-
 miscellaneousUtilities.init(self, self.cUtils = {});
 
 
@@ -42,7 +41,7 @@ var newLayerWindow = function(cmd) { //Note: These layer objects are usable as b
 		y:[cmd.y||0, (cmd.y||0)+cmd.height-1]
 	}));
 	cmd.type = 'window';
-	cmd.name = cmd.name || 'Window #'+(++wCounter);
+	cmd.name = cmd.name || 'Window #'+(wCounter++);
 	cmd.layers = [];
 	return cmd;
 };
@@ -55,7 +54,7 @@ var newLayerFolder = function(cmd) {
 		y:[cmd.y||0, (cmd.y||0)+cmd.height-1]
 	}));
 	cmd.type = 'folder';
-	cmd.name = cmd.name || 'Folder #'+(++fCounter);
+	cmd.name = cmd.name || 'Folder #'+(fCounter++);
 	cmd.layers = [];
 	return cmd;
 };
@@ -68,7 +67,7 @@ var newLayerCanvas = function(cmd) {
 		y:[cmd.y||0, (cmd.y||0)+cmd.height-1]
 	}));
 	cmd.type = 'canvas';
-	cmd.name = cmd.name || 'Canvas #'+(++cCounter);
+	cmd.name = cmd.name || 'Canvas #'+(cCounter++);
 	cmd.channels = cmd.channels || 8; //Uint8 rgba ∑ 4, Uint32 tool# = 4
 	cmd.buffer = cUtils.newBuffer(cmd.width, cmd.height, cmd.channels);
 	cmd.exteriorColour = new Uint8ClampedArray([,,,255]); //This is what is returned when we access outside the layer data. It must be a Uint8ClampedArray, or else renderLayerData will be 4x as slow as it is.
@@ -79,9 +78,24 @@ var newLayerCanvas = function(cmd) {
 // === Start event handlers. ===
 
 var onInitializeLayerTree = function(data) {
+	data.name = '';
 	self.imageTree = newLayerWindow(_.clone(data));
 	cUtils.insertLayer(imageTree, [0], newLayerWindow(_.clone(data)));
 	cUtils.insertLayer(imageTree, [0,0], newLayerCanvas(_.extend(_.clone(data), {x:0,y:0})));
+	cUtils.insertLayer(imageTree, [1], newLayerCanvas((function() {
+			var barHeight = 100;
+			var newData = _.clone(data); 
+			newData.y = newData.height-barHeight; 
+			newData.height = barHeight; 
+			return newData;
+		})()));
+	
+	cUtils.getLayer(self.imageTree, [0]).y -= 20;
+	var toolbarLayer = cUtils.getLayer(self.imageTree, [1]);
+	cUtils.setAll(_.defaults({data: new Uint8ClampedArray(toolbarLayer.buffer)}, {0:255, 3:255}));
+	toolbarLayer.exteriorColour = new Uint8ClampedArray([,,,,]);
+	onFlash();
+	
 	//c.log(imageTree); //Causes Chrome to crash when the screen is larger than about 800x800 on winXP.
 };
 
@@ -112,7 +126,6 @@ var onAddLayer = function(data) {
 };
 
 var onChangeLayerData = function(data) {
-	c.log(data);
 	var layer = cUtils.getLayer(self.imageTree, data.path);
 	_.keys(data.delta).forEach(function(key) {
 		layer[key] += data.delta[key];
@@ -135,7 +148,7 @@ var onDrawLine = function(data) { //Draw a number of pixels to the canvas.
 var onFlash = function() { //For testing. Refreshes the entire window.
 	var window = cUtils.getLayer(imageTree, []);
 	//window = cUtils.getBoundingBox({x:[0,100-1], y:[0,200-1]});
-	sendUpdate([0], window); //Write it to the output. Just a little hack until layer-specific rendering works... It just uses getLayer atm.
+	sendUpdate([-1], window); //Write it to the output. Just a little hack until layer-specific rendering works... It just uses getLayer atm.
 };
 
 var onForcefill = function(data) {
@@ -143,7 +156,7 @@ var onForcefill = function(data) {
 	var layer = cUtils.getLayer(imageTree, data.tool.layer);
 	var canvas = cUtils.getLayer(imageTree, []);
 	cUtils.setAll(_.defaults({data: new Uint8ClampedArray(layer.buffer)}, data.tool.colour));
-	sendUpdate([0], cUtils.duplicateBoundingBox(layer));
+	sendUpdate([-1], cUtils.duplicateBoundingBox(layer));
 };
 
 
@@ -151,8 +164,8 @@ var onForcefill = function(data) {
 
 
 var sendUpdate = function(layerPath, boundingBox) {
-	/*
 	//c.log('bounding box', boundingBox);
+	/*
 	var layer = cUtils.getLayer(imageTree, layerPath);
 	var offset = lData.getLayerOffset(imageTree, layerPath); //This function could use some more testing.
 	//Just update background for now.

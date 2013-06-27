@@ -41,8 +41,6 @@ editors.map(function(index) {
 			});
 		} else {
 			_.extend(command, ui.tool.colour);
-			// command[0] = 255;
-			// command[3] = 255;
 		}
 		cUtils.setLine(
 			cUtils.normalizeCoords(command, boundingBox)/*, true*/);
