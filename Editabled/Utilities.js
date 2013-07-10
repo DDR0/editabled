@@ -7,8 +7,13 @@ editors.map(function(index) {
 	var canvas = editors[index];
 	var utils = canvas.edLib.utils = {};
 	var edLib = canvas.edLib;
+	var ui = canvas.edLib.ui = {};
+	var writers = edLib.writers = {};
+	var pxStore = edLib.pxStore;
 	
 	var cUtils = editors.utils;
+
+	var imageTree = null; //Set up in User Interface.
 	
 	utils.tag = Math.random().toString(36).slice(2,7);
 	utils.tagStr = function(str) {return "["+utils.tag+"] "+str;};
@@ -19,37 +24,6 @@ editors.map(function(index) {
 	
 	
 	/* LAYERS */
-	
-	
-	utils.layer = function(cmd) { //When passing a layer message to Pixel Store, pass it through this which will keep the near-side layer data in synch. We need to maintain two copies, since, assuming Pixel Store is in the middle of five minuites of doing *something*, we have no way of getting the data out of it. So, we duplicate!
-		edLib.pxStore.postMessage(cmd); //Do this first on the off-chance we accidentally hose cmd in some of our processing. Cmd is copied when it's passed, so we can multch it later without reprecussions.
-		switch(cmd.command) { //These should be changed to functions in another file, and called.
-			case 'addLayer':
-				//utils.imageTree.push({type:'layer'});
-				c.error('todo: implement adding layer here');
-				break;
-			case 'changeLayerData':
-				var layer = cUtils.getLayer(utils.imageTree, cmd.data.path);
-				_.keys(cmd.data.delta).forEach(function(key) {
-					layer[key] += cmd.data.delta[key];
-				});
-				break;
-			case 'initializeLayerTree':
-				utils.imageTree = utils.newLayerWindow(cmd.data);
-				cUtils.insertLayer(utils.imageTree, [0], utils.newLayerWindow(cmd.data));
-				cUtils.insertLayer(utils.imageTree, [0,0], utils.newLayerCanvas(cmd.data));
-				cUtils.insertLayer(utils.imageTree, [1], utils.newLayerCanvas(cmd.data));
-				break;
-			case 'setLayerData':
-				c.error('todo: implement setting here');
-				break;
-			default:
-				var err = new Error('Couldn\'t mirror a layer command.');
-				err.command = cmd;
-				throw err;
-		}
-	};
-	
 	var newLayerThumbnail = function() {
 		return {
 			buffer: new Uint8ClampedArray(30*20*4), //We might want this to be… uh, dynamic. Later. Someday.
@@ -80,9 +54,12 @@ editors.map(function(index) {
 			name: cmd.name || 'Folder #'+(++fCounter),
 			thumbnail: newLayerThumbnail(),
 			layers: cmd.layers || [],
+			x: cmd.x || 0,
+			y: cmd.y || 0,
 		};
 	};
 	
+	//These should have x/y locations so we can offset the update from Pixel Store if we've moved. This improves our caching model so we don't have to re-render the entire screen.
 	var cCounter = 0;
 	utils.newLayerCanvas = function(cmd) {
 		return {
@@ -90,6 +67,67 @@ editors.map(function(index) {
 			name: cmd.name || 'Layer #'+(++cCounter),
 			thumbnail: newLayerThumbnail(),
 			channels: [],
+			x: cmd.x || 0,
+			y: cmd.y || 0,
 		};
+	};
+
+
+
+
+	utils.addLayer = function(data) {
+		edLib.pxStore.postMessage({command:'addLayer', data:data});
+		c.error('todo: implement adding layer here');
+	};
+
+	utils.changeLayerData = function(data) {
+		edLib.pxStore.postMessage({command:'changeLayerData', data:data});
+		var layer = cUtils.getLayer(utils.imageTree, data.path);
+		_.keys(data.delta).forEach(function(key) {
+			layer[key] += data.delta[key];
+		});
+	};
+
+	utils.initializeLayerTree = function(data) {
+		edLib.pxStore.postMessage({command:'initializeLayerTree', data:data});
+		utils.imageTree = utils.newLayerWindow(data);
+		cUtils.insertLayer(utils.imageTree, [0], utils.newLayerWindow(data));
+		cUtils.insertLayer(utils.imageTree, [0,0], utils.newLayerCanvas(data));
+		cUtils.insertLayer(utils.imageTree, [1], utils.newLayerCanvas(data));
+	};
+
+	utils.setLayerData = function(data) {
+		edLib.pxStore.postMessage({command:'setLayerData', data:data});
+		c.error('todo: implement setting here');
+	};
+
+	utils.drawLine = function(data) {
+		if(data.to !== 'ui' && data.to !== undefined) {
+			pxStore.postMessage({
+				'command': 'drawLine',
+				'data': (data.tool=ui.tool, data),
+			});
+		}	
+		delete data.tool; //Don't need these anymore.
+		data.to = data.to || 'ui';
+		
+		var boundingBox = cUtils.getBoundingBox(data.points);
+		var iData = writers[data.to].createImageData(boundingBox.width, boundingBox.height);
+		var command = {
+			x:data.points.x,
+			y:data.points.y, 
+			data:iData.data, 
+			width:iData.width,
+		};
+		if(data.colour) {
+			data.colour.map(function(value, index) {
+				if(isFinite(value)) command[index] = value;
+			});
+		} else {
+			_.extend(command, ui.tool.colour);
+		}
+		cUtils.setLine(
+			cUtils.normalizeCoords(command, boundingBox)/*, true*/);
+		writers[data.to].putImageData(iData, boundingBox.x, boundingBox.y);
 	};
 });

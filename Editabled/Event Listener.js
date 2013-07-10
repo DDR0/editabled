@@ -27,7 +27,7 @@ editors.map(function(index) {
 			return wacomPlugin ? wacomPlugin.penAPI.pressure : null;
 		};
 		return function(event) {
-			return wacomPressure() || event.pressure || event.mozPressure || 0.5;
+			return wacomPressure() || event.pressure || event.mozPressure || 0.5; //We'll default mouse pressure to being 0.5. This way, using the mouse, the pressure effect won't be stupid-strong.
 		};
 	}();
 	

@@ -10,6 +10,7 @@ editors.map(function(index) {
 	var edLib = canvas.edLib;
 	var utils = edLib.utils;
 	//var cUtils = editors.utils;
+	var ui = canvas.edLib.ui;
 	
 	var canvasPosition = canvasDOM.offset();
 	var extraCanvases = _.range(5).map(function() {
@@ -33,22 +34,21 @@ editors.map(function(index) {
 	//Original canvas stays here, unmodified, at 0.
 	extraCanvases[3].css('z-index', 1);
 	extraCanvases[4].css('z-index', 2);
-	
-	//Disable resizing for now, because it'll require support for layers and resizing -- which we don't have yet.
-	canvasDOM.css({'width': canvas.width+'px', 'height': canvas.height+'px',});
-	
-	utils.layer({'command': 'initializeLayerTree', 'data': {
+
+	utils.initializeLayerTree({
 		'width': canvas.width,
 		'height': canvas.height,
 		//'x': 20, 'y': 10, //Testing.
 		'name': 'main',
-	}});
-	//c.log(utils.tagStr('|'), utils.imageTree);
+	});
+	
+	//Disable resizing for now, because it'll require support for layers and resizing -- which we don't have yet.
+	canvasDOM.css({'width': canvas.width+'px', 'height': canvas.height+'px',});
 	
 	cu = utils;
 	eu = editors.utils;
 		
-	var writers = edLib.writers = {}; //We'll write the buffered output of the pixel store to two layers, overlay and underlay. Underlay will contain the RGBA render of the active layer, and any layers below. Overlay, will contain the RGBA render of the remaining layers. These will blend together using whatever method the browser uses for compositing. ui will be where the tool itself is rendered as it's being used. uiGhost is where the ghost of the tool renders, *if* the overlay pixel isn't totally transparent. This is because, since we've got a layered image, the tool should appear *in* the layer it's working on, and hence underneath any layers on top of it.
+	var writers = edLib.writers; //We'll write the buffered output of the pixel store to two layers, overlay and underlay. Underlay will contain the RGBA render of the active layer, and any layers below. Overlay, will contain the RGBA render of the remaining layers. These will blend together using whatever method the browser uses for compositing. ui will be where the tool itself is rendered as it's being used. uiGhost is where the ghost of the tool renders, *if* the overlay pixel isn't totally transparent. This is because, since we've got a layered image, the tool should appear *in* the layer it's working on, and hence underneath any layers on top of it.
 	
 	//Six layers. We can render six layers easily, I think. The problem would be rendering 50. Or 500.
 	writers.uiGhost =     extraCanvases[4][0].getContext('2d'); //If the pencil is obscured by drawing something, it should appear here as a ghostly purple outline. This lets you get 'inside' the picture's layers. Purple intensity is related to alpha of overlay. This layer is not moved when the canvas is.

@@ -7,7 +7,6 @@ editors.map(function(index) {
 	var writers = canvas.edLib.writers;
 	var ui = canvas.edLib.ui;
 	
-	
 	var pingWorker = function() {
 		var handlers = {
 			onPing: function(data) {
