@@ -55,7 +55,7 @@ window.loadEditabled = function() {
 			js = js.url;
 			//c.log('loader: fetching ' + js);
 			$.ajax({
-				async: false,
+				async: true,
 				type: "GET",
 				url: baseURL + js,
 				dataType: 'text',
