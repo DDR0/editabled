@@ -98,7 +98,10 @@ editors.map(function(index) {
 
 	utils.setLayerData = function(data) {
 		edLib.pxStore.postMessage({command:'setLayerData', data:data});
-		c.error('todo: implement setting here');
+		var layer = cUtils.getLayer(utils.imageTree, data.path);
+		_.keys(data.delta).forEach(function(key) {
+			layer[key] = data.delta[key];
+		});
 	};
 
 	utils.drawLine = function(data) {

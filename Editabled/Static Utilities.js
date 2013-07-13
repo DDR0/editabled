@@ -111,6 +111,14 @@ miscellaneousUtilities.init = function(globalObject, targetObject) {
 	t.duplicateBoundingBox = function(oldBox) {
 		return t.getBoundingBox({x:[oldBox.x1, oldBox.x2], y:[oldBox.y1, oldBox.y2]});
 	};
+
+	t.boxIntersection = function(box1, box2) {
+		var ascending = function(a,b) {return a>b;};
+		return t.getBoundingBox({
+			x:[box1.x1, box1.x2, box2.x1, box2.x2].sort(ascending).slice(1,3),
+			y:[box1.y1, box1.y2, box2.y1, box2.y2].sort(ascending).slice(1,3),
+		});
+	};
 	
 	t.croppedImage = function(largeImage, boundingBox) { //Only for RGBA images. Have a look at moveLayerData for shifting around multichannel image data.
 		return largeImage.getImageData(boundingBox.x, boundingBox.y, boundingBox.width, boundingBox.height);

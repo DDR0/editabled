@@ -79,10 +79,11 @@ var newLayerCanvas = function(cmd) {
 
 var onInitializeLayerTree = function(data) {
 	data.name = '';
-	self.imageTree = newLayerWindow(_.clone(data));
-	cUtils.insertLayer(imageTree, [0], newLayerWindow(_.clone(data)));
-	cUtils.insertLayer(imageTree, [0,0], newLayerCanvas(_.extend(_.clone(data), {x:0,y:0})));
-	cUtils.insertLayer(imageTree, [1], newLayerCanvas((function() {
+	self.imageTree = newLayerWindow(_.clone(data)); //Parent window. Should (but doesn't) stay synched to editor size.
+	cUtils.insertLayer(imageTree, [0], newLayerWindow(_.clone(data))); //Graphic window. Bottom of the stack, because all ui elements go on it.
+	cUtils.insertLayer(imageTree, [0,0], newLayerCanvas(_.extend(_.clone(data), {x:0,y:0}))); //Give us a layer to draw on, initially.
+	cUtils.insertLayer(imageTree, [1], newLayerWindow(_.clone(data))); //Tool-bar window. Should be (but isn't) shrink-wrapped to the height of the toolbar.
+	cUtils.insertLayer(imageTree, [1,0], newLayerCanvas((function() { //Tool-bar canvas, where we draw the tools.
 			var barHeight = 100;
 			var newData = _.clone(data); 
 			newData.y = newData.height-barHeight; 
@@ -90,8 +91,7 @@ var onInitializeLayerTree = function(data) {
 			return newData;
 		})()));
 	
-	cUtils.getLayer(self.imageTree, [0]).y -= 20;
-	var toolbarLayer = cUtils.getLayer(self.imageTree, [1]);
+	var toolbarLayer = cUtils.getLayer(self.imageTree, [1,0]); //Flood-fill the toolbar layer so we can see it. Set it's exterior overdraw to transparent, though, because we don't want to occlude the canvas we're drawing on!
 	cUtils.setAll(_.defaults({data: new Uint8ClampedArray(toolbarLayer.buffer)}, {0:255, 3:255}));
 	toolbarLayer.exteriorColour = new Uint8ClampedArray([,,,,]);
 	onFlash();
@@ -127,10 +127,34 @@ var onAddLayer = function(data) {
 
 var onChangeLayerData = function(data) {
 	var layer = cUtils.getLayer(self.imageTree, data.path);
-	_.keys(data.delta).forEach(function(key) {
+	data.delta && _.keys(data.delta).forEach(function(key) {
 		layer[key] += data.delta[key];
 	});
-	sendUpdate(data.path, layer);
+	data.abs && _.keys(data.abs).forEach(function(key) {
+		layer[key] = data.abs[key];
+	});
+	calcPaintUpdate(data);
+};
+
+//This function calculates the camera area that needs painting, based on what data has been changed. It is conservative by default, because the conservative path is the only one that will produce a visible error.
+var calcPaintUpdate = function(data) {
+	var layer = cUtils.getLayer(self.imageTree, data.path);
+	var camera = cUtils.getLayer(self.imageTree, []);
+	var updateRect = cUtils.duplicateBoundingBox(camera);
+
+	if(data.delta.x > 0) {
+		updateRect.x2 = updateRect.x1 + data.delta.x;
+	} else if(data.delta.x < 0) {
+		updateRect.x1 = updateRect.x2 + data.delta.x;
+	}
+	if(data.delta.y > 0) {
+		updateRect.y2 = updateRect.y1 + data.delta.y;
+	} else if(data.delta.y < 0) {
+		updateRect.y1 = updateRect.y2 + data.delta.y;
+	}
+
+	//c.log('computed delta is (before camera clip)', updateRect.width, 'by', updateRect.height);
+	sendUpdate([], updateRect);
 };
 
 
@@ -141,7 +165,7 @@ var onDrawLine = function(data) { //Draw a number of pixels to the canvas.
 	
 	lData.setLine(layer, data.points, data.tool.colour);
 	
-	//_.range(500000); //Test line-drawing with a busy wait.
+	//_.range(500000); //Test: Simulate an expensive line-draw with a busy wait.
 	sendUpdate(data.tool.layer, boundingBox);
 };
 
@@ -170,13 +194,14 @@ var sendUpdate = function(layerPath, boundingBox) {
 	var offset = lData.getLayerOffset(imageTree, layerPath); //This function could use some more testing.
 	//Just update background for now.
 	var bufferToReturn = cUtils.convertBuffer(layer.buffer, {area:boundingBox, bufferWidth:layer.width, outputChannels:4, inputChannels:8});
-	
 	*/
+
+	var camera = cUtils.getLayer(self.imageTree, []);
+	c.log('cam:', camera.x1, camera.y1, camera.x2, camera.y2);
+	c.log('bnd:', boundingBox.x1, boundingBox.y1, boundingBox.x2, boundingBox.y2);
+
 	var renderLayer = lData.renderLayerData(imageTree, boundingBox); //Render every layer to the activeLayer, for now, until we've got it working.
-	//c.log(renderLayer);
-	
-	var bLength = renderLayer.buffer.byteLength;
-	//c.log(new Uint8ClampedArray(bufferToReturn));
+	var originalByteLength = renderLayer.buffer.byteLength;
 	self.postMessage({
 		'command': 'pasteUpdate',
 		'data': {
@@ -187,8 +212,9 @@ var sendUpdate = function(layerPath, boundingBox) {
 			data: renderLayer.buffer,
 		},
 	}, [renderLayer.buffer]);
-	if(bLength === renderLayer.buffer.byteLength) { //If the buffer was copied, byteLength won't be readable anymore.
-		c.log("The return buffer was serialized! [#u1P7T]");
+
+	//If the buffer was copied, byteLength won't be readable anymore.
+	if(originalByteLength === renderLayer.buffer.byteLength) {
 		throw new Error("The return buffer was serialized! [#u1P7T]");
 	}
 };
