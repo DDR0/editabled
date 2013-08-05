@@ -43,6 +43,7 @@ var newLayerWindow = function(cmd) { //Note: These layer objects are usable as b
 	cmd.type = 'window';
 	cmd.name = cmd.name || 'Window #'+(wCounter++);
 	cmd.layers = [];
+	cmd.writer = 'default';
 	return cmd;
 };
 
@@ -91,10 +92,13 @@ var onInitializeLayerTree = function(data) {
 			return newData;
 		})()));
 	
+	cUtils.getLayer(self.imageTree, []).writer = 'none';
+	cUtils.getLayer(self.imageTree, [1]).writer = 'staticWidgets';
 	var toolbarLayer = cUtils.getLayer(self.imageTree, [1,0]); //Flood-fill the toolbar layer so we can see it. Set it's exterior overdraw to transparent, though, because we don't want to occlude the canvas we're drawing on!
 	cUtils.setAll(_.defaults({data: new Uint8ClampedArray(toolbarLayer.buffer)}, {0:255, 3:255}));
 	toolbarLayer.exteriorColour = new Uint8ClampedArray([,,,,]);
-	onFlash();
+	c.log(cUtils.getLayer(self.imageTree, [1]).writer);
+	sendUpdate([1], cUtils.getLayer(self.imageTree, []));
 	
 	//c.log(imageTree); //Causes Chrome to crash when the screen is larger than about 800x800 on winXP.
 };
@@ -154,7 +158,8 @@ var calcPaintUpdate = function(data) {
 	}
 
 	//c.log('computed delta is (before camera clip)', updateRect.width, 'by', updateRect.height);
-	sendUpdate([], updateRect);
+	c.log('computed update for', data.path);
+	sendUpdate(data.path, updateRect);
 };
 
 
@@ -169,18 +174,24 @@ var onDrawLine = function(data) { //Draw a number of pixels to the canvas.
 	sendUpdate(data.tool.layer, boundingBox);
 };
 
-var onFlash = function() { //For testing. Refreshes the entire window.
-	var window = cUtils.getLayer(imageTree, []);
-	//window = cUtils.getBoundingBox({x:[0,100-1], y:[0,200-1]});
-	sendUpdate([-1], window); //Write it to the output. Just a little hack until layer-specific rendering works... It just uses getLayer atm.
+var onFlash = function() { //For testing. Refreshes the paint layer.
+	var layer = cUtils.getLayer(imageTree, [0]);
+	//layer = cUtils.getBoundingBox({x:[0,100-1], y:[0,200-1]});
+	sendUpdate([0], layer); //Write it to the output. Just a little hack until layer-specific rendering works... It just uses getLayer atm.
 };
 
 var onForcefill = function(data) {
 	c.log('pxs forcefilling');
 	var layer = cUtils.getLayer(imageTree, data.tool.layer);
 	var canvas = cUtils.getLayer(imageTree, []);
+
 	cUtils.setAll(_.defaults({data: new Uint8ClampedArray(layer.buffer)}, data.tool.colour));
-	sendUpdate([-1], cUtils.duplicateBoundingBox(layer));
+
+	//Disable the next line to make forcefill highlight the *defined* layer.
+	var dtc = data.tool.colour;
+	layer.exteriorColour = new Uint8ClampedArray([dtc[0], dtc[1], dtc[2], dtc[3]]);
+	
+	sendUpdate(data.tool.layer, layer);
 };
 
 
@@ -188,24 +199,19 @@ var onForcefill = function(data) {
 
 
 var sendUpdate = function(layerPath, boundingBox) {
-	//c.log('bounding box', boundingBox);
-	/*
-	var layer = cUtils.getLayer(imageTree, layerPath);
-	var offset = lData.getLayerOffset(imageTree, layerPath); //This function could use some more testing.
-	//Just update background for now.
-	var bufferToReturn = cUtils.convertBuffer(layer.buffer, {area:boundingBox, bufferWidth:layer.width, outputChannels:4, inputChannels:8});
-	*/
+	//var camera = cUtils.getLayer(self.imageTree, []);
+	//c.log('cam:', camera.x1, camera.y1, camera.x2, camera.y2);
+	//c.log('bnd:', boundingBox.x1, boundingBox.y1, boundingBox.x2, boundingBox.y2);
 
-	var camera = cUtils.getLayer(self.imageTree, []);
-	c.log('cam:', camera.x1, camera.y1, camera.x2, camera.y2);
-	c.log('bnd:', boundingBox.x1, boundingBox.y1, boundingBox.x2, boundingBox.y2);
+	var view = cUtils.getLayer(self.imageTree, typeof layerPath[0] === 'number' ? [layerPath[0]] : []);
+	if(view.writer === 'none') {throw new Error('The view specified for rendering was marked unrenderable, as \'none\'. (path: [' + layerPath + '])');}
 
-	var renderLayer = lData.renderLayerData(imageTree, boundingBox); //Render every layer to the activeLayer, for now, until we've got it working.
+	var renderLayer = lData.renderLayerData(view, boundingBox); //Render every layer to the activeLayer, for now, until we've got it working.
 	var originalByteLength = renderLayer.buffer.byteLength;
 	self.postMessage({
 		'command': 'pasteUpdate',
 		'data': {
-			layer: 'activeLayer',
+			layer: (view.writer !== 'default' ? view.writer : '') || 'activeLayer',
 			bounds: {
 				x:[/*runOffset.x + */renderLayer.x1, /*runOffset.x + */renderLayer.x2], 
 				y:[/*runOffset.y + */renderLayer.y1, /*runOffset.y + */renderLayer.y2]},

@@ -20,17 +20,17 @@ editors.map(function(index) {
 
 	
 	ui.draw = function() {  //For the tests. They call ui.draw, and don't specify the .to property.
-		arguments[0].to = 'uiCache';
+		arguments[0].to = 'drawCache';
 		//arguments[0].absolutePosition = true;
 		utils.drawLine.apply(this, arguments);
 	};
 	
 	ui.pencilLeftStart = function(event) {
-		utils.drawLine({'to':'uiCache', 'points': {x:[event.x], y:[event.y]}}); //Down has no access to the old position. You can only be down in one place, right?
+		utils.drawLine({'to':'drawCache', 'points': {x:[event.x], y:[event.y]}}); //Down has no access to the old position. You can only be down in one place, right?
 	};
 	
 	ui.pencilLeftContinue = function(event) {
-		utils.drawLine({'to':'uiCache', 'points': {x:[event.x, event.oldX], y:[event.y, event.oldY]}});
+		utils.drawLine({'to':'drawCache', 'points': {x:[event.x, event.oldX], y:[event.y, event.oldY]}});
 	};
 	
 	ui.pencilAddPreview = function(event) {
@@ -74,7 +74,7 @@ editors.map(function(index) {
 	
 	ui.flash = function(event) { //Does a full refresh of the pixels from Pixel Store. This should only be for debugging.
 		c.log('flashing memory to screen');
-		_.keys(writers).map(function(name) {
+		/*_.keys(writers)*/["activeLayer"].map(function(name) {
 			writers[name].clearRect(0,0,10000,10000);
 		});
 		pxStore.postMessage({
@@ -115,11 +115,10 @@ editors.map(function(index) {
 	
 	var handlers = {
 		onPasteUpdate: function(data) { //This doesn't use requestAnimationFrame because it doesn't seem to have any impact on performance.
-			var update = new Uint8Array(data.data);
 			var imageData = writers[data.layer].createImageData(Math.abs(data.bounds.x[0]-data.bounds.x[1])+1, Math.abs(data.bounds.y[0]-data.bounds.y[1])+1);
-			imageData.data.set(update);
+			imageData.data.set(new Uint8ClampedArray(data.data));
 			writers[data.layer].putImageData(imageData, data.bounds.x[0], data.bounds.y[0]);
-			writers.uiCache.clearRect(data.bounds.x[0], data.bounds.y[0], Math.abs(data.bounds.x[0]-data.bounds.x[1])+1, Math.abs(data.bounds.y[0]-data.bounds.y[1])+1);
+			writers.drawCache.clearRect(data.bounds.x[0], data.bounds.y[0], Math.abs(data.bounds.x[0]-data.bounds.x[1])+1, Math.abs(data.bounds.y[0]-data.bounds.y[1])+1);
 		},
-	};	
+	};
 });

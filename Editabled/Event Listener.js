@@ -222,7 +222,7 @@ document.addEventListener('keydown', function(event) {
 	var key = event.keyCode || event.which;
 	if(!keysDown[key]) { //No reason to fire key presses repeatedly other than text input, which we're not doing here.
 		keysDown[key] = true;
-		c.log('Registered key ' + key + ' (on canvas: ' + !!edFocusedCanvas + ')');
+		//c.log('Registered key ' + key + ' (on canvas: ' + !!edFocusedCanvas + ')');
 		c.log('returned', edFocusedCanvas ? !!edFocusedCanvas : true);
 		return edFocusedCanvas ? edFocusedCanvas(event, key) : true;
 	} else {
@@ -234,6 +234,6 @@ document.addEventListener('keyup', function(event) {
 	"use strict";
 	var key = event.keyCode || event.which;
 	keysDown[key] = false;
-	c.log('Unregistered key ' + key);
+	//c.log('Unregistered key ' + key);
 	return true;
 });
