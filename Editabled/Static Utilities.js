@@ -170,10 +170,11 @@ miscellaneousUtilities.init = function(globalObject, targetObject) {
 	t.setAll = function(cmd) { //Fields: int chan=8, Uint8Array data, int 0,1,2,3,…,n.
 		cmd.chan = cmd.chan || 8;
 		var pixels = cmd.data.length/cmd.chan;
+		var colour = new Uint8ClampedArray(_.range(cmd.chan).map(function(chan) {return cmd[chan];}));
 		index = 0;
 		for (var index = 0; index < pixels; index++) {
 			for (var channel = 0; channel < cmd.chan; channel++) {
-				if(isFinite(cmd[channel])) cmd.data[index*cmd.chan+channel] = cmd[channel];
+				cmd.data[index*cmd.chan+channel] = colour[channel];
 			}
 		}
 	};

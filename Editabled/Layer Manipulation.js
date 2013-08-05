@@ -23,6 +23,17 @@ lData.setLine = function(layer, points, colour) {
 };
 
 
+lData.paintInteriorExterior = function(layer) { //Paints the interior pixels of the layer the exterior color of the layer.
+	cUtils.setAll({
+		data:new Uint8ClampedArray(layer.buffer), 
+		chan:layer.channels, 
+		0: layer.exteriorColour[0], 
+		1: layer.exteriorColour[1], 
+		2: layer.exteriorColour[2], 
+		3: layer.exteriorColour[3]});
+};
+
+
 lData.sizeLayer = function(layer, box) { //Resizes the layer so that the bounding box would fit in to it.
 	var x1Exp = Math.min(0, box.x1 - layer.x1); //x1Exp = Left side expansion required to make box fit in layer. Will be a negative number, since it only needs to go left-er.
 	var y1Exp = Math.min(0, box.y1 - layer.y1);
@@ -37,6 +48,9 @@ lData.sizeLayer = function(layer, box) { //Resizes the layer so that the boundin
 		if(x2Exp) resizedLayer.x2 = cUtils.aCeil(resizedLayer.x2 + x2Exp + 1) - 1; //OK, this is I think needed because 0 overlaps in the aCeil math when we expand negatively. Since we expand in 512-pixel incrementns, we should ensure that we do not exceed by one and make a 516-pixel wide image, because I think that'd do bad things to some optimization somewhere. Waste of space, and all. At any rate, the -1 makes the math correct here (I measured) for round numbers of pixels. :) This is pure 'gut feeling', unfortunantly, since I don't know a way to directly profile this.
 		if(y2Exp) resizedLayer.y2 = cUtils.aCeil(resizedLayer.y2 + y2Exp + 1) - 1; //The if statements keep the -1s from being applied if there is no change, if the layer has been initialized juuuust wrong, ie, equal to cUtils.aCeil(resizedLayer.y2 + y2Exp).
 		resizedLayer.buffer = cUtils.newBuffer(resizedLayer.width, resizedLayer.height, resizedLayer.channels);
+		c.log('resizing with', resizedLayer.exteriorColour);
+		//TODO: Optimize the call to paintInteriorExterior to only update the bits that need it.
+		lData.paintInteriorExterior(resizedLayer); //This call is a little over half the time it takes to execute this function.
 		lData.moveLayerData(layer, resizedLayer, {area: layer, optimization:'line'});
 		_.extend(layer, resizedLayer);
 	}

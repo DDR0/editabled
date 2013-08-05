@@ -99,8 +99,6 @@ var onInitializeLayerTree = function(data) {
 	toolbarLayer.exteriorColour = new Uint8ClampedArray([,,,,]);
 	c.log(cUtils.getLayer(self.imageTree, [1]).writer);
 	sendUpdate([1], cUtils.getLayer(self.imageTree, []));
-	
-	//c.log(imageTree); //Causes Chrome to crash when the screen is larger than about 800x800 on winXP.
 };
 
 
@@ -114,7 +112,7 @@ self.onmessage = function(event) {
 		points.x = points.x.map(function(point) {return point-runOffset.x;});
 		points.y = points.y.map(function(point) {return point-runOffset.y;});
 	}
-	
+
 	var cmd = cUtils.eventNameFromCommand('on', event);
 	self[cmd]((delete event.data.data.command, event.data.data));
 };
@@ -176,6 +174,7 @@ var onDrawLine = function(data) { //Draw a number of pixels to the canvas.
 
 var onFlash = function() { //For testing. Refreshes the paint layer.
 	var layer = cUtils.getLayer(imageTree, [0]);
+	runOffset = {x:0, y:0}; //We have to reset this because this function isn't relative.
 	//layer = cUtils.getBoundingBox({x:[0,100-1], y:[0,200-1]});
 	sendUpdate([0], layer); //Write it to the output. Just a little hack until layer-specific rendering works... It just uses getLayer atm.
 };
@@ -190,8 +189,8 @@ var onForcefill = function(data) {
 	//Disable the next line to make forcefill highlight the *defined* layer.
 	var dtc = data.tool.colour;
 	layer.exteriorColour = new Uint8ClampedArray([dtc[0], dtc[1], dtc[2], dtc[3]]);
-	
-	sendUpdate(data.tool.layer, layer);
+
+	onFlash();
 };
 
 
