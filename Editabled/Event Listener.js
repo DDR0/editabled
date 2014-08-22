@@ -223,7 +223,7 @@ document.addEventListener('keydown', function(event) {
 	if(!keysDown[key]) { //No reason to fire key presses repeatedly other than text input, which we're not doing here.
 		keysDown[key] = true;
 		//c.log('Registered key ' + key + ' (on canvas: ' + !!edFocusedCanvas + ')');
-		c.log('returned', edFocusedCanvas ? !!edFocusedCanvas : true);
+		//c.log('returned', edFocusedCanvas ? !!edFocusedCanvas : true);
 		return edFocusedCanvas ? edFocusedCanvas(event, key) : true;
 	} else {
 		return true;

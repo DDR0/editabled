@@ -1,4 +1,4 @@
-/*jshint smarttabs:true, es5:true*/
+/*jshint smarttabs:true*/
 
 miscellaneousUtilities.init(window, editors.utils = {});
 
@@ -18,8 +18,8 @@ editors.map(function(index) {
 	utils.tag = Math.random().toString(36).slice(2,7);
 	utils.tagStr = function(str) {return "["+utils.tag+"] "+str;};
 	
-	var isFirefox = navigator.userAgent.indexOf("Firefox") >= 0; //Faking the UA string will just affect tweaks, nothing will out-and-out break. If you say you're someone different, that's your problem.
-	utils.useDelayInputWorkaround = isFirefox; //Firefox grabs mouse move input in preference to rendering, which causes ridiculous delays while it repeatedly grabs the mouse and defers painting the results. The solution is to delay the rendering results running by using window.setTimeout(). This adds a noticable though not lethal lag in rendering, so we should only use it when we need to.
+	var isFirefox = navigator.userAgent.indexOf("Firefox") >= 0; //Faking the UA string will just affect tweaks, nothing will out-and-out break.
+	utils.useDelayInputWorkaround = false; //Firefox grabs mouse move input in preference to rendering, which causes ridiculous delays while it repeatedly grabs the mouse and defers painting the results. The solution is to delay the rendering results running by using window.setTimeout(). This adds a noticable though not lethal lag in rendering, so we should only use it when we need to.
 	utils.useMouseOffsetWorkaround = false; //Firefox, for some reason, writes to the canvas one pixel below the crosshair's center.
 	
 	
@@ -131,6 +131,8 @@ editors.map(function(index) {
 		}
 		cUtils.setLine(
 			cUtils.normalizeCoords(command, boundingBox)/*, true*/);
-		writers[data.to].putImageData(iData, boundingBox.x, boundingBox.y);
+			window.requestAnimationFrame(function() {
+				writers[data.to].putImageData(iData, boundingBox.x, boundingBox.y);
+			});
 	};
 });

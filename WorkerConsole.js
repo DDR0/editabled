@@ -1,1 +1,0 @@
-Editabled/WorkerConsole/WorkerConsole.js

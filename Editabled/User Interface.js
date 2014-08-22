@@ -117,8 +117,10 @@ editors.map(function(index) {
 		onPasteUpdate: function(data) { //This doesn't use requestAnimationFrame because it doesn't seem to have any impact on performance.
 			var imageData = writers[data.layer].createImageData(Math.abs(data.bounds.x[0]-data.bounds.x[1])+1, Math.abs(data.bounds.y[0]-data.bounds.y[1])+1);
 			imageData.data.set(new Uint8ClampedArray(data.data));
-			writers[data.layer].putImageData(imageData, data.bounds.x[0], data.bounds.y[0]);
-			writers.drawCache.clearRect(data.bounds.x[0], data.bounds.y[0], Math.abs(data.bounds.x[0]-data.bounds.x[1])+1, Math.abs(data.bounds.y[0]-data.bounds.y[1])+1);
+			window.requestAnimationFrame(function() {
+				writers[data.layer].putImageData(imageData, data.bounds.x[0], data.bounds.y[0]);
+				writers.drawCache.clearRect(data.bounds.x[0], data.bounds.y[0], Math.abs(data.bounds.x[0]-data.bounds.x[1])+1, Math.abs(data.bounds.y[0]-data.bounds.y[1])+1);
+			});
 		},
 	};
 });

@@ -31,7 +31,7 @@ if(typeof console === 'undefined') {
 
 miscellaneousUtilities.init(self, self.cUtils = {});
 
-
+console.log('test3');
 var wCounter = 0;
 var newLayerWindow = function(cmd) { //Note: These layer objects are usable as bounding boxes.
 	if(!cmd.width || !cmd.height) c.error('The pixel store tried to create a newLayerWindow with a width/height of ' + cmd.width + '/' + cmd.height + '.');
@@ -104,6 +104,7 @@ var onInitializeLayerTree = function(data) {
 
 var runOffset; //This offset will be used later by Layer Manipulation's renderLayerData. It is how much we translated the input coords by.
 self.onmessage = function(event) {
+	console.log('recieved message from "' + event.origin + '"');
 	if(event.data && event.data.data && event.data.data.tool) {
 		runOffset = lData.getLayerOffset(imageTree, event.data.data.tool.layer);
 	} else {runOffset = {x:0, y:0};}

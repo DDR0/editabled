@@ -23,13 +23,18 @@ window.loadEditabled = function() {
 	
 	var launchGame;
 	launchGame = function() {
-		jsArRecieved.map(function(data, index) {
+		jsArRecieved.forEach(function(data, index) {
 			var js = jsAr[index];
 			if(js.type === 'script') {
-				jQuery.globalEval(data);
+				var script   = document.createElement("script");
+				script.type  = "text/javascript";
+				script.async = false; //This is needed because the scripts will _execute_ asynchronously, too. Since we've already loaded them into cache, we shouldn't have to re-fetch them.
+				script.src = baseURL + jsAr[index].url;
+				document.body.appendChild(script);
 			} else if(js.type === 'canvas-worker') {
 				editors.map(function(index) {
 					var editor = editors[index];
+					console.log('spawning worker', baseURL + js.url);
 					editor.edLib[js.name] = new Worker(baseURL + js.url);
 				});
 			} else {
@@ -50,24 +55,22 @@ window.loadEditabled = function() {
 		window.alert('Well, bother. An error occured while downloading the editor. Check that we\'re still connected to the internet, then try again. If that didn\'t work, then we\'re hooped. Sorry.');
 	});
 	
-	window.setTimeout(function() { //The 50ms delay is required, here. Sticking the ajax in the DOMContentLoaded event, after the drawing of the text, doesn't help one iota in chrome. Works in Firefox, though.
-		jsAr.map(function(js, index) {
-			js = js.url;
-			//c.log('loader: fetching ' + js);
-			$.ajax({
-				async: true,
-				type: "GET",
-				url: baseURL + js,
-				dataType: 'text',
-				
-				error: failToLoad,
-				success: function(data){
-					jsArRecieved[index] = data;
-					continueIfLoaded();
-				},
-			});
+	 jsAr.map(function(js, index) {
+		js = js.url;
+		//c.log('loader: fetching ' + js);
+		$.ajax({
+			async: true,
+			type: "GET",
+			url: baseURL + js,
+			dataType: 'text',
+			
+			error: failToLoad,
+			success: function(data){
+				jsArRecieved[index] = data;
+				continueIfLoaded();
+			},
 		});
-	}, 50);
+	});
 	
 	window.addEventListener('DOMContentLoaded', function() {
 		//Draw 'loading' text.
