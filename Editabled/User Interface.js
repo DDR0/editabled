@@ -47,6 +47,7 @@ editors.map(function(index) {
 		_.range(3).map(function(index) {
 			ui.tool.colour[index] = Math.random()*255;
 		});
+		ui.pencilAddPreview(event);
 		//delete ui.tool.colour[Math.round(Math.random()*2)];
 		c.log(ui.tool.colour);
 	};

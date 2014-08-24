@@ -2,36 +2,35 @@
 /* global console, _, self, miscellaneousUtilities, cUtils, ArrayBuffer, DataView, Uint8Array, imageTree, lData*/
 "use strict";
 
+//Obsolete, now - the worker logging utilities built-in have been improved.
 //Side note: Due to the webworker environment, we often get debug output back without so much as a hint as to where it came from. For this reason, ID tags are scattered about, taking the form of [xxxxx]. To find a tag from the output, just do a multifile search for it.
 
-self.importScripts('Underscore 1.4.4.js', "Static Utilities.js", "Layer Manipulation.js"); //~/*.js on Chrome, ~/Editabled/*.js on Firefox. Fixed with soft filesystem link.
+self.importScripts('Underscore 1.4.4.js', "Shared Utilities.js", "Layer Manipulation.js"); //~/*.js on Chrome, ~/Editabled/*.js on Firefox. Fixed with soft filesystem link.
 
-//Could import, but it's a bit of a pain. Comment out for final release.
+//Define c, our console. Make some attempt to work around non-conforming browsers.
 var c;
-if(typeof console === 'undefined') {
+if(typeof console === 'undefined') {(function() {
 	var logger;
 	if(typeof self.dump === 'undefined') { //Chrome, because Firefox doesn't support messages for WorkerConsole.
 		logger = function() {};
-		c = {
-			log: logger,
-			warn: logger,
-			error: logger
-		};
 	} else { //Firefox, because Chrome doesn't support self.dump().
 		logger = function dumper() {self.dump('ps: ' + _.reduce(arguments, function(a,b,s,l) {return a+b+(s+1!==l.length?", ":".");}) + '\n');};
-		c = {
-			log: logger,
-			warn: logger,
-			error: logger
-		};
+		logger("Using dump-based logger.");
 	}
-} else {
+	c = {
+		info: logger,
+		log: logger,
+		warn: logger,
+		error: logger
+	};
+	//This is untested, and might crash? :<
+	self.postMessage({'command': 'logMessage', 'data': "Warning: Nonstandard logger used by web worker."});
+})();} else {
 	c = console;
 }
 
 miscellaneousUtilities.init(self, self.cUtils = {});
 
-console.log('test3');
 var wCounter = 0;
 var newLayerWindow = function(cmd) { //Note: These layer objects are usable as bounding boxes.
 	if(!cmd.width || !cmd.height) c.error('The pixel store tried to create a newLayerWindow with a width/height of ' + cmd.width + '/' + cmd.height + '.');
@@ -101,10 +100,9 @@ var onInitializeLayerTree = function(data) {
 	sendUpdate([1], cUtils.getLayer(self.imageTree, []));
 };
 
-
 var runOffset; //This offset will be used later by Layer Manipulation's renderLayerData. It is how much we translated the input coords by.
 self.onmessage = function(event) {
-	console.log('recieved message from "' + event.origin + '"');
+	//.log('recieved message from ' + event.origin + '.');
 	if(event.data && event.data.data && event.data.data.tool) {
 		runOffset = lData.getLayerOffset(imageTree, event.data.data.tool.layer);
 	} else {runOffset = {x:0, y:0};}

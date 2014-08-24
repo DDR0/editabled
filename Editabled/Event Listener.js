@@ -27,7 +27,7 @@ editors.map(function(index) {
 			return wacomPlugin ? wacomPlugin.penAPI.pressure : null;
 		};
 		return function(event) {
-			return wacomPressure() || event.pressure || event.mozPressure || 0.5; //We'll default mouse pressure to being 0.5. This way, using the mouse, the pressure effect won't be stupid-strong.
+			return wacomPressure() || event.pressure || event.mozPressure || 0.5; //We'll default mouse pressure to being firm. This way, using the mouse, the pressure effect won't always be stupid-strong.
 		};
 	}();
 	
@@ -205,6 +205,8 @@ editors.map(function(index) {
 		if(action && ui[action]) {
 			var args = {
 				pressedKeyCodes: keysDown,
+				x: oldMousePosition.x,
+				y: oldMousePosition.y,
 			};
 			sendEventToUI(action, args);
 			return stopAllPropagation(event); //Don't do this for keys we don't use.

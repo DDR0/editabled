@@ -11,7 +11,7 @@ window.loadEditabled = function() {
 	
 	var baseURL = "Editabled/";
 	var jsAr = [		
-		{url: "Static Utilities.js",        type: "script"},
+		{url: "Shared Utilities.js",        type: "script"},
 		{url: "Pixel Store.js",             type: "canvas-worker", name: "pxStore"},
 		{url: "Utilities.js",               type: "script"},
 		{url: "Setup.js",                   type: "script"},
