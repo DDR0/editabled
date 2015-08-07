@@ -18,59 +18,8 @@ window.loadEditabled = function() {
 		{url: "User Interface.js",          type: "script"},
 		{url: "Event Listener.js",          type: "script"},
 		{url: "Tests.js",                   type: "script"},
-		];
-	var jsArRecieved = [];
-	
-	var launchGame;
-	launchGame = function() {
-		jsArRecieved.forEach(function(data, index) {
-			var js = jsAr[index];
-			if(js.type === 'script') {
-				var script   = document.createElement("script");
-				script.type  = "text/javascript";
-				script.async = false; //This is needed because the scripts will _execute_ asynchronously, too. Since we've already loaded them into cache, we shouldn't have to re-fetch them.
-				script.src = baseURL + jsAr[index].url;
-				document.body.appendChild(script);
-			} else if(js.type === 'canvas-worker') {
-				editors.map(function(index) {
-					var editor = editors[index];
-					console.log('spawning worker', baseURL + js.url);
-					editor.edLib[js.name] = new Worker(baseURL + js.url);
-				});
-			} else {
-				throw "script type '"+js.type+"' invalid";
-			}
-		});
-	};
-	
-	var continueIfLoaded = function() {
-		loadOtherScriptsCount += 1;
-		if(loadOtherScriptsCount === jsAr.length) {
-			launchGame();
-		}
-	};
-	
-	var failToLoad = _.once(function(err) {
-		c.warn('AJAX error ' + err.status + ": " + err.statusText + ".\n" + err.responseText);
-		window.alert('Well, bother. An error occured while downloading the editor. Check that we\'re still connected to the internet, then try again. If that didn\'t work, then we\'re hooped. Sorry.');
-	});
-	
-	 jsAr.map(function(js, index) {
-		js = js.url;
-		//c.log('loader: fetching ' + js);
-		$.ajax({
-			async: true,
-			type: "GET",
-			url: baseURL + js,
-			dataType: 'text',
-			
-			error: failToLoad,
-			success: function(data){
-				jsArRecieved[index] = data;
-				continueIfLoaded();
-			},
-		});
-	});
+	];
+
 	
 	window.addEventListener('DOMContentLoaded', function() {
 		//Draw 'loading' text.
@@ -91,6 +40,27 @@ window.loadEditabled = function() {
 			var textWidth = ctx.measureText(text).width;
 			ctx.strokeText(text,  editor.width/2 - textWidth/2, editor.height/2 + textHeight/4);
 			ctx.fillText(  text,  editor.width/2 - textWidth/2, editor.height/2 + textHeight/4);
+		});
+		
+		//Load.
+		jsAr.forEach(function(data, index) {
+			var js = jsAr[index];
+			if(js.type === 'script') {
+				var script   = document.createElement("script");
+				script.type  = "text/javascript";
+				script.async = false; //This is needed because the scripts will _execute_ asynchronously, too. Since we've already loaded them into cache, we shouldn't have to re-fetch them.
+				script.src = baseURL + jsAr[index].url;
+				c.log('adding', jsAr[index].url);
+				document.body.appendChild(script);
+			} else if(js.type === 'canvas-worker') {
+				editors.map(function(index) {
+					var editor = editors[index];
+					console.log('spawning worker', baseURL + js.url);
+					editor.edLib[js.name] = new Worker(baseURL + js.url);
+				});
+			} else {
+				throw "script type '"+js.type+"' invalid";
+			}
 		});
 	});
 	
