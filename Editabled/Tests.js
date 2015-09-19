@@ -7,23 +7,53 @@ editors.map(function(index) {
 	var writers = canvas.edLib.writers;
 	var ui = canvas.edLib.ui;
 	
-	var pingWorker = function() {
+	var pingWorker = function() {	
 		var handlers = {
 			onPing: function(data) {
 				c.log(utils.tagStr("Worker said:"), data.data);
+				
+				workerLatency();
 			},
 		};
 		
-		pxStore.addEventListener('message', function(event) {
+		var pingListener = function(event) {
 			var cmd = cUtils.eventNameFromCommand('on', event);
 			if(typeof handlers[cmd] === 'function') {
 				handlers[cmd](event.data); return;
 			}
-		});
+		};
+		pxStore.addEventListener('message', pingListener);
 		
-		//Test above messaging.
+		//ping worker, the most basic command
 		pxStore.postMessage({'command': 'ping', 'data': 'ping', });
 		console.log(utils.tagStr('Messager said: ping'));
+		
+		//measure worker latency
+		function workerLatency() {
+			var iteration = 0, warmupIterations = 10, maxIterations = 1000;
+			var times = [];
+			
+			handlers.onPing = function() {
+				times.push(performance.now());
+				if(iteration++ < maxIterations + warmupIterations) {
+					pxStore.postMessage({'command': 'ping', 'data': 'ping', });
+				} else {
+					var deltas = delta(times.slice(warmupIterations));
+					//window.prompt('copy', deltas.join(', '));
+					//console.log('samples (warm)', deltas.length);
+					console.log('mean warm ping time', deltas.reduce(function(a,b) {return a+b;}, 0)/deltas.length+'ms');
+					console.log('median warm ping time', deltas.slice().sort(function(a,b) {return a<b;})[deltas.length/2]+'ms');
+				}
+			};
+			handlers.onPing('first ping');
+		}
+		
+		function delta(list) {
+			return list.slice(0,-1).map(function(t1, i) {
+				var t2 = list[i+1];
+				return t2 - t1;
+			});
+		}
 	};
 	
 	
