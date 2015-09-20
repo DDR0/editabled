@@ -61,7 +61,7 @@ editors.map(function(index) {
 	};
 	
 	var jumpMove = function(x,y) {
-		previewTranslate(x, y, []);
+		//previewTranslate(x, y, []); //disabled. With Pixel Store:calcLayerPaintUpdate also mostly disabled, the preview here makes double-previewed camera movement jumpy.
 		utils.changeLayerData({delta:{x:x, y:y}, path: ui.focusedWindow}); //Should be 1/8th of a screen.
 	};
 	ui.mediumMoveLeft = function(event)  {jumpMove(+100, 0);};
@@ -115,13 +115,12 @@ editors.map(function(index) {
 	//There are two ways to approach it. First, we can snapshot the canvas when we begin, using getImageData. This isn't fast enough to run every frame, but perhaps it'd be fine to run once when the tool is selected? Alternatively, we can copy each update into a buffer, and store it. However, the copying to the buffer might be more time-consuming than the call to getImageData.
 	
 	var handlers = {
-		onPasteUpdate: function(data) { //This doesn't use requestAnimationFrame because it doesn't seem to have any impact on performance.
+		onPasteUpdate: function(data) {
 			var imageData = writers[data.layer].createImageData(Math.abs(data.bounds.x[0]-data.bounds.x[1])+1, Math.abs(data.bounds.y[0]-data.bounds.y[1])+1);
 			imageData.data.set(new Uint8ClampedArray(data.data));
-			window.requestAnimationFrame(function() {
-				writers[data.layer].putImageData(imageData, data.bounds.x[0], data.bounds.y[0]);
-				writers.drawCache.clearRect(data.bounds.x[0], data.bounds.y[0], Math.abs(data.bounds.x[0]-data.bounds.x[1])+1, Math.abs(data.bounds.y[0]-data.bounds.y[1])+1);
-			});
+			console.log(data.offset);
+			writers[data.layer].putImageData(imageData, data.bounds.x[0], data.bounds.y[0]);
+			writers.drawCache.clearRect(data.bounds.x[0], data.bounds.y[0], Math.abs(data.bounds.x[0]-data.bounds.x[1])+1, Math.abs(data.bounds.y[0]-data.bounds.y[1])+1);
 		},
 	};
 });

@@ -131,8 +131,6 @@ editors.map(function(index) {
 		}
 		cUtils.setLine(
 			cUtils.normalizeCoords(command, boundingBox)/*, true*/);
-			window.requestAnimationFrame(function() {
-				writers[data.to].putImageData(iData, boundingBox.x, boundingBox.y);
-			});
+		writers[data.to].putImageData(iData, boundingBox.x, boundingBox.y);
 	};
 });

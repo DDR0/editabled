@@ -134,27 +134,29 @@ var onChangeLayerData = function(data) {
 	data.abs && _.keys(data.abs).forEach(function(key) {
 		layer[key] = data.abs[key];
 	});
-	calcPaintUpdate(data);
+	calcLayerPaintUpdate(data);
 };
 
 //This function calculates the camera area that needs painting, based on what data has been changed. It is conservative by default, because the conservative path is the only one that will produce a visible error.
-var calcPaintUpdate = function(data) {
+var calcLayerPaintUpdate = function(data) {
 	var layer = cUtils.getLayer(self.imageTree, data.path);
 	var camera = cUtils.getLayer(self.imageTree, []);
 	var updateRect = cUtils.duplicateBoundingBox(camera);
 
-	if(data.delta.x > 0) {
-		updateRect.x2 = updateRect.x1 + data.delta.x;
-	} else if(data.delta.x < 0) {
-		updateRect.x1 = updateRect.x2 + data.delta.x;
-	}
-	if(data.delta.y > 0) {
-		updateRect.y2 = updateRect.y1 + data.delta.y;
-	} else if(data.delta.y < 0) {
-		updateRect.y1 = updateRect.y2 + data.delta.y;
-	}
+	//TODO: Make camera movement preview work with this update rect. Right now, if you move twice before the preview gets back to you, the update is pasted in the wrong place. Instead of using screen-space coordinates, the paste-back MUST use layer coordinates which the front-end translates to screen-space.
+	//Calculate the rect containing new data for moved layer. The front-end has all the old data, and the preview has moved it.
+	//if(data.delta.x > 0) {
+	//	updateRect.x2 = updateRect.x1 + data.delta.x;
+	//} else if(data.delta.x < 0) {
+	//	updateRect.x1 = updateRect.x2 + data.delta.x;
+	//}
+	//if(data.delta.y > 0) {
+	//	updateRect.y2 = updateRect.y1 + data.delta.y;
+	//} else if(data.delta.y < 0) {
+	//	updateRect.y1 = updateRect.y2 + data.delta.y;
+	//}
 
-	//c.log('computed delta is (before camera clip)', updateRect.width, 'by', updateRect.height);
+	c.log('computed delta is (before camera clip)', updateRect.width, 'by', updateRect.height);
 	c.log('computed update for', data.path);
 	sendUpdate(data.path, updateRect);
 };
@@ -210,6 +212,7 @@ var sendUpdate = function(layerPath, boundingBox) {
 		'command': 'pasteUpdate',
 		'data': {
 			layer: (view.writer !== 'default' ? view.writer : '') || 'activeLayer',
+			offset: runOffset, //TODO: The front-end should take this into account when posting updates; but it currently doesn't.
 			bounds: {
 				x:[/*runOffset.x + */renderLayer.x1, /*runOffset.x + */renderLayer.x2], 
 				y:[/*runOffset.y + */renderLayer.y1, /*runOffset.y + */renderLayer.y2]},
