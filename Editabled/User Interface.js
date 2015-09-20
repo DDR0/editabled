@@ -118,7 +118,7 @@ editors.map(function(index) {
 		onPasteUpdate: function(data) {
 			var imageData = writers[data.layer].createImageData(Math.abs(data.bounds.x[0]-data.bounds.x[1])+1, Math.abs(data.bounds.y[0]-data.bounds.y[1])+1);
 			imageData.data.set(new Uint8ClampedArray(data.data));
-			console.log(data.offset);
+			//console.log(data.offset);
 			writers[data.layer].putImageData(imageData, data.bounds.x[0], data.bounds.y[0]);
 			writers.drawCache.clearRect(data.bounds.x[0], data.bounds.y[0], Math.abs(data.bounds.x[0]-data.bounds.x[1])+1, Math.abs(data.bounds.y[0]-data.bounds.y[1])+1);
 		},

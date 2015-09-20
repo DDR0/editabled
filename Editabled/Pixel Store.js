@@ -156,7 +156,7 @@ var calcLayerPaintUpdate = function(data) {
 	//	updateRect.y1 = updateRect.y2 + data.delta.y;
 	//}
 
-	c.log('computed delta is (before camera clip)', updateRect.width, 'by', updateRect.height);
+	//c.log('computed delta is (before camera clip)', updateRect.width, 'by', updateRect.height);
 	c.log('computed update for', data.path);
 	sendUpdate(data.path, updateRect);
 };
